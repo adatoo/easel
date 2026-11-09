@@ -9,7 +9,7 @@ site for easier watching on the Apple TV. It's for personal use and isn't distri
 |---|---|
 | **Library** | The site's videos as big cards, searchable (titles, tutors, materials). Tap a card to play. |
 | **Favourites** | Videos she has hearted. |
-| **Continue** | Videos she has started, with how far through and how many bookmarks. Long-press to remove one. |
+| **Continue** | Videos she has started, with how far through and how many bookmarks. Tap **Remove…** (top right) to take videos off the list, one at a time or all at once. |
 | **Downloads** | Videos saved on the iPad, which play without internet. Swipe left to remove one. |
 | **Website** | The site itself, signed in. On any video page she can play, a big **Watch in Easel** button appears. |
 
