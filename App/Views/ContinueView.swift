@@ -21,7 +21,7 @@ struct ContinueView: View {
                     ContentUnavailableView(
                         "Nothing watched yet",
                         systemImage: "play.circle",
-                        description: Text("Videos you start in Easel appear here, ready to pick up where you stopped. Tap Remove… to take videos off the list.")
+                        description: Text("Videos you start in Easel appear here, ready to pick up where you stopped.")
                     )
                 } else {
                     ScrollView {
