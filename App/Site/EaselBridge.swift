@@ -81,24 +81,32 @@ enum EaselBridge {
         };
       }
 
-      // Once Easel can play this page, pressing play in the site's player opens Easel's instead.
-      function redirectPlay(slug, path) {
-        function handOver() {
-          if (location.pathname !== path) { return; }
-          window.__easelPause();
-          post({ type: 'play', slug: slug });
+      // Once Easel can play this page, any video starting to play on it hands over to Easel's
+      // player instead. Media 'play' events don't bubble, so listen in the capture phase on the
+      // document: that catches the site's player however and whenever it (re)builds itself.
+      var playable = null;      // { slug, path } once the stream is known
+      var pendingPlay = null;   // the path where play was pressed before the stream was known
+
+      function handOver(slug) {
+        window.__easelPause();
+        post({ type: 'play', slug: slug });
+      }
+
+      document.addEventListener('play', function (event) {
+        if (!(event.target instanceof HTMLMediaElement)) { return; }
+        if (playable && playable.path === location.pathname) {
+          handOver(playable.slug);
+        } else {
+          pendingPlay = location.pathname;
         }
-        try {
-          var player = window.jwplayer();
-          if (player && typeof player.on === 'function') {
-            player.on('play', handOver);
-            if (typeof player.getState === 'function' && player.getState() === 'playing') { handOver(); }
-            return;
-          }
-        } catch (e) {}
-        document.querySelectorAll('video').forEach(function (video) {
-          video.addEventListener('play', handOver);
-        });
+      }, true);
+
+      function streamReady(slug, path) {
+        playable = { slug: slug, path: path };
+        if (pendingPlay === path) {
+          pendingPlay = null;
+          handOver(slug);
+        }
       }
 
       var currentPath = null;
@@ -113,6 +121,7 @@ enum EaselBridge {
         if (path === currentPath) { return; }
         currentPath = path;
         stopPolling();
+        playable = null;
 
         var slug = slugFromPath(path);
         if (!slug) { post({ type: 'page', video: null }); return; }
@@ -131,7 +140,7 @@ enum EaselBridge {
           if (url) {
             stopPolling();
             post({ type: 'stream', slug: info.slug, url: url });
-            redirectPlay(info.slug, path);
+            streamReady(info.slug, path);
           }
         }, 250);
       }
