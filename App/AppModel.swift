@@ -16,10 +16,16 @@ final class AppModel {
 
     /// The video to start as soon as its page's stream is found (set when she taps a card).
     @ObservationIgnored private var autoPlaySlug: String?
+    /// The tab she tapped a video in, to go back to when the player closes.
+    @ObservationIgnored private var returnTab: Tab?
 
     init() {
         web.onStream = { [weak self] video, url in
             self?.streamFound(video: video, url: url)
+        }
+        // Play pressed in the site's own player opens Easel's player instead.
+        web.onSitePlay = { [weak self] in
+            self?.watchCurrentPage()
         }
     }
 
@@ -31,6 +37,7 @@ final class AppModel {
             playRequest = PlayRequest(video: video, streamURL: local)
             return
         }
+        if tab != .website { returnTab = tab }
         tab = .website
         if web.pageVideo?.slug == video.slug, let url = web.streamURL {
             if autoPlay { play(video: web.pageVideo ?? video, url: url) }
@@ -42,8 +49,18 @@ final class AppModel {
 
     /// The big Watch button on a video page.
     func watchCurrentPage() {
+        returnTab = nil
         guard let video = web.pageVideo, let url = web.streamURL else { return }
         play(video: video, url: downloads.localURL(for: video.slug) ?? url)
+    }
+
+    /// After the player closes: back to the tab she started in, if she came from a card.
+    func playerClosed() {
+        web.pauseSitePlayer()
+        if let returnTab {
+            tab = returnTab
+            self.returnTab = nil
+        }
     }
 
     private func streamFound(video: VideoInfo, url: URL) {

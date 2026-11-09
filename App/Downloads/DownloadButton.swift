@@ -7,6 +7,9 @@ struct DownloadButton: View {
     @Environment(AppModel.self) private var app
     @State private var confirmDelete = false
 
+    /// Wide enough for the longest state, so the button keeps its size as it changes.
+    private static let labelWidth: CGFloat = 190
+
     var body: some View {
         let downloads = app.downloads
         Group {
@@ -15,6 +18,7 @@ struct DownloadButton: View {
                     confirmDelete = true
                 } label: {
                     Label("Downloaded", systemImage: "checkmark.circle.fill")
+                        .frame(width: Self.labelWidth)
                 }
                 .tint(.green)
             } else if let progress = downloads.progress(for: video.slug) {
@@ -24,8 +28,13 @@ struct DownloadButton: View {
                     HStack(spacing: 10) {
                         ProgressView(value: progress)
                             .progressViewStyle(.circular)
-                        Text("\(Int(progress * 100))% · Cancel")
+                            .controlSize(.small)
+                        Text("\(Int(progress * 100))%")
+                            .monospacedDigit()
+                            .frame(width: 52, alignment: .trailing)
+                        Text("Cancel")
                     }
+                    .frame(width: Self.labelWidth)
                 }
             } else {
                 Button {
@@ -35,12 +44,16 @@ struct DownloadButton: View {
                     }
                 } label: {
                     Label("Download", systemImage: "arrow.down.circle")
+                        .frame(width: Self.labelWidth)
                 }
             }
         }
         .font(.title3.weight(.semibold))
         .buttonStyle(.bordered)
         .controlSize(.large)
+        .lineLimit(1)
+        .fixedSize()
+        .animation(nil, value: downloads.progress(for: video.slug))
         .confirmationDialog("Remove the download?", isPresented: $confirmDelete) {
             Button("Remove from iPad", role: .destructive) { downloads.delete(video.slug) }
         } message: {

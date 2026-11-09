@@ -20,6 +20,8 @@ final class WebController: NSObject {
 
     /// Called when a video page's stream is found.
     @ObservationIgnored var onStream: ((VideoInfo, URL) -> Void)?
+    /// Called when play is pressed in the site's own player on a page Easel can play.
+    @ObservationIgnored var onSitePlay: (() -> Void)?
     @ObservationIgnored private var observations: [NSKeyValueObservation] = []
 
     override init() {
@@ -98,6 +100,9 @@ extension WebController: WKScriptMessageHandler {
             else { return }
             streamURL = url
             onStream?(video, url)
+        case "play":
+            guard (body["slug"] as? String) == pageVideo?.slug, streamURL != nil else { return }
+            onSitePlay?()
         default:
             break
         }

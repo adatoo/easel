@@ -9,6 +9,7 @@
 ///   { type: "page", video: { id, slug, title, tutor, thumbnail, description, dateLive,
 ///                            duration, isSeries, inTheFuture } | null }
 ///   { type: "stream", slug, url }
+///   { type: "play", slug }      (play pressed in the site's player; Easel plays it instead)
 enum EaselBridge {
     static let source = #"""
     (function () {
@@ -80,6 +81,26 @@ enum EaselBridge {
         };
       }
 
+      // Once Easel can play this page, pressing play in the site's player opens Easel's instead.
+      function redirectPlay(slug, path) {
+        function handOver() {
+          if (location.pathname !== path) { return; }
+          window.__easelPause();
+          post({ type: 'play', slug: slug });
+        }
+        try {
+          var player = window.jwplayer();
+          if (player && typeof player.on === 'function') {
+            player.on('play', handOver);
+            if (typeof player.getState === 'function' && player.getState() === 'playing') { handOver(); }
+            return;
+          }
+        } catch (e) {}
+        document.querySelectorAll('video').forEach(function (video) {
+          video.addEventListener('play', handOver);
+        });
+      }
+
       var currentPath = null;
       var poll = null;
 
@@ -110,6 +131,7 @@ enum EaselBridge {
           if (url) {
             stopPolling();
             post({ type: 'stream', slug: info.slug, url: url });
+            redirectPlay(info.slug, path);
           }
         }, 250);
       }

@@ -24,7 +24,7 @@ struct RootView: View {
                 .tabItem { Label("Website", systemImage: "globe") }
                 .tag(AppModel.Tab.website)
         }
-        .fullScreenCover(item: $app.playRequest) { request in
+        .fullScreenCover(item: $app.playRequest, onDismiss: { app.playerClosed() }) { request in
             PlayerScreen(request: request)
                 .environment(app)
                 .modelContext(context)
