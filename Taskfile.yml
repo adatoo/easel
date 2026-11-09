@@ -1,0 +1,54 @@
+# Easel's commands.
+#
+#   task            list the tasks
+#   task open       generate the Xcode project and open it
+#   task build      build for the iOS Simulator (unsigned) into ./DerivedData
+version: '3'
+
+set: [errexit, nounset, pipefail]
+silent: true
+
+vars:
+  DERIVED_DATA: '{{.ROOT_DIR}}/DerivedData'
+  SCHEME: Easel
+  PRETTY:
+    sh: 'command -v xcbeautify >/dev/null 2>&1 && echo "xcbeautify --quiet" || echo cat'
+
+env:
+  # xcode-select often points at the Command Line Tools, which can't run xcodebuild.
+  DEVELOPER_DIR:
+    sh: |
+      if [ -n "${DEVELOPER_DIR:-}" ]; then
+        echo "$DEVELOPER_DIR"
+      elif xcode-select -p 2>/dev/null | grep -q CommandLineTools && [ -d /Applications/Xcode.app ]; then
+        echo /Applications/Xcode.app/Contents/Developer
+      else
+        xcode-select -p 2>/dev/null || true
+      fi
+
+tasks:
+  default:
+    desc: List the tasks
+    cmds:
+      - task --list
+
+  generate:
+    desc: Regenerate Easel.xcodeproj from project.yml
+    cmds:
+      - xcodegen generate --quiet
+
+  open:
+    desc: Generate the project and open it in Xcode
+    deps: [generate]
+    cmds:
+      - open Easel.xcodeproj
+
+  build:
+    desc: Build for the iOS Simulator into ./DerivedData (unsigned)
+    deps: [generate]
+    cmds:
+      - >-
+        xcodebuild -scheme {{.SCHEME}} -configuration Debug build
+        -derivedDataPath "{{.DERIVED_DATA}}"
+        -destination 'generic/platform=iOS Simulator'
+        CODE_SIGNING_ALLOWED=NO | {{.PRETTY}}
