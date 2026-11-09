@@ -21,10 +21,30 @@ struct DownloadRecord: Codable, Identifiable, Hashable {
     }
 
     var info: VideoInfo {
-        VideoInfo(
-            id: videoID, slug: slug, title: title, tutor: tutor, thumbnail: thumbnail, summary: "",
-            dateLive: nil, durationMinutes: 0, isSeries: false, isUpcoming: false
-        )
+        VideoInfo(id: videoID, slug: slug, title: title, tutor: tutor, thumbnail: thumbnail)
+    }
+}
+
+/// How sharp downloads are. 1080p is about 2.5 GB an hour, 720p about 1.5 GB.
+enum DownloadQuality: String, CaseIterable, Identifiable {
+    case full = "1080p"
+    case smaller = "720p"
+
+    var id: String { rawValue }
+
+    /// The stream's variants are about 5.5, 3.4 and 1.2 Mbit/s; the download takes the lowest
+    /// one at or above this.
+    var minimumBitrate: Int {
+        switch self {
+        case .full: return 5_000_000
+        case .smaller: return 3_000_000
+        }
+    }
+
+    static let defaultsKey = "downloadQuality"
+
+    static var current: DownloadQuality {
+        DownloadQuality(rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? "") ?? .full
     }
 }
 
@@ -42,9 +62,6 @@ final class DownloadManager: NSObject {
     private(set) var active: [String: Active] = [:]
     /// The last download that failed, for a message.
     private(set) var lastError: String?
-
-    /// Downloads at the stream's 1080p rendition (about 2.5 GB an hour).
-    static let minimumBitrate = 5_000_000
 
     @ObservationIgnored private var session: AVAssetDownloadURLSession!
     @ObservationIgnored private var tasks: [String: AVAssetDownloadTask] = [:]
@@ -97,9 +114,9 @@ final class DownloadManager: NSObject {
             asset: asset,
             assetTitle: video.title,
             assetArtworkData: nil,
-            options: [AVAssetDownloadTaskMinimumRequiredMediaBitrateKey: Self.minimumBitrate]
+            options: [AVAssetDownloadTaskMinimumRequiredMediaBitrateKey: DownloadQuality.current.minimumBitrate]
         ) else {
-            lastError = "Couldn't start downloading “\(video.title)”."
+            lastError = "Couldn't start downloading “\(video.displayTitle)”."
             return
         }
         task.taskDescription = Self.encode(video)
@@ -120,6 +137,10 @@ final class DownloadManager: NSObject {
             try? FileManager.default.removeItem(at: record.fileURL)
             saveIndex()
         }
+    }
+
+    func clearError() {
+        lastError = nil
     }
 
     // MARK: - Index
@@ -185,7 +206,7 @@ final class DownloadManager: NSObject {
         if let error {
             if let location { try? FileManager.default.removeItem(at: location) }
             if (error as NSError).code != NSURLErrorCancelled {
-                lastError = "“\(video.title)” didn't finish downloading: \(error.localizedDescription)"
+                lastError = "“\(video.displayTitle)” didn't finish downloading: \(error.localizedDescription)"
             }
             return
         }
@@ -231,8 +252,7 @@ final class DownloadManager: NSObject {
         else { return nil }
         return VideoInfo(
             id: Int(fields["id"] ?? "") ?? 0, slug: slug, title: fields["title"] ?? slug,
-            tutor: fields["tutor"] ?? "", thumbnail: fields["thumbnail"] ?? "", summary: "",
-            dateLive: nil, durationMinutes: 0, isSeries: false, isUpcoming: false
+            tutor: fields["tutor"] ?? "", thumbnail: fields["thumbnail"] ?? ""
         )
     }
 }

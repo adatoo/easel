@@ -7,21 +7,24 @@ AirPlays to the Apple TV. Personal use only, never on the App Store. README.md e
 ## Layout
 
 - `App/Site/`: everything that depends on the website.
-  - `EaselBridge.swift`: the injected page script. If the site changes, fix this first.
-  - `RawUmber.swift`: the site's URLs.
-  - `Catalog.swift`: the site's search endpoint.
-  - `WebController.swift`: the web view.
-- `App/Library/`: `VideoInfo` (from the site), the SwiftData models, `VideoStore`.
-- `App/Views/`: the four tabs and the video card.
-- `App/Player/`: `PlayerModel` (AVPlayer, AirPlay, remote commands, Now Playing) and `PlayerScreen`.
-- `project.yml`: the XcodeGen spec. Edit it rather than the generated project, which isn't committed.
+  - `SiteScripts.swift`: the scripts injected into the two hidden web views. If the site changes, fix these first.
+  - `SiteAPI.swift`: search, playlists, video/series pages, who is signed in.
+  - `StreamResolver.swift`: finds a video's stream from the site's own player.
+  - `SiteModels.swift`: `VideoInfo`, playlists, tutors, search filters.
+- `App/Library/`: the SwiftData models and `VideoStore`.
+- `App/Views/`: the shell (`RootView`), Home, Search, the video/series page, My Easel and lists, account and website sheets, shared components.
+- `App/Player/`: `PlayerModel` (AVPlayer, AirPlay, remote commands) and the player overlay, remote layout and mini bar.
+- `App/Downloads/`: background HLS downloads.
+- `App/AppModel.swift`: navigation, what's playing, bookmarks, downloads.
+- `App/Theme.swift`: colours and button styles.
+- `project.yml`: the XcodeGen spec.
 
 ## Rules
 
 - Only play a stream that the page's own player was given for her account. Never build stream
   URLs from video IDs, and never get round the site's sign-in or subscription.
-- Use the site's search like its own page does: 25 results per request, as she scrolls. Don't
-  crawl or bulk-download the catalogue.
+- Use the site's search like its own page does: 25 results per request, as she asks for more.
+  Don't crawl or bulk-download the catalogue.
 - Keep the UI big and simple. The person using it struggles with small video controls.
 - Swift 5 language mode with minimal concurrency checking for now. Raise to Swift 6 /
   `complete` (as in Arif's other apps) once it has settled on her iPad.

@@ -4,7 +4,8 @@ import Observation
 import UIKit
 
 /// Easel's player: an AVPlayer that AirPlays the stream to the Apple TV, with the iPad as the
-/// remote. The Siri Remote and the lock screen controls drive it too.
+/// remote. The Siri Remote and the lock screen controls drive it too. It belongs to the app, not
+/// to a screen, so a video keeps playing while she browses.
 @MainActor
 @Observable
 final class PlayerModel {
@@ -12,15 +13,19 @@ final class PlayerModel {
 
     private(set) var isPlaying = false
     private(set) var isReady = false
+    private(set) var failed = false
     /// True while the video is playing on the Apple TV rather than on the iPad.
     private(set) var isExternal = false
     private(set) var duration: Double = 0
     private(set) var currentTime: Double = 0
     private(set) var rate: Float = 1
+    private(set) var isScrubbing = false
+    /// Whether the stream carries subtitles she can switch on.
+    private(set) var hasSubtitles = false
+    private(set) var subtitlesOn = false
 
     /// Called about twice a second with (time, duration) while it plays, to save her place.
     @ObservationIgnored var onProgress: ((Double, Double) -> Void)?
-    @ObservationIgnored private var isScrubbing = false
     @ObservationIgnored private var pendingStart: Double = 0
     @ObservationIgnored private var timeObserver: Any?
     @ObservationIgnored private var observations: [NSKeyValueObservation] = []
@@ -28,13 +33,26 @@ final class PlayerModel {
     @ObservationIgnored private var nowPlayingTitle = ""
     @ObservationIgnored private var nowPlayingArtist = ""
     @ObservationIgnored private var artwork: MPMediaItemArtwork?
+    @ObservationIgnored private var subtitleGroup: AVMediaSelectionGroup?
+
+    /// The Apple TV's name while AirPlaying, e.g. "Living Room".
+    var routeName: String? {
+        AVAudioSession.sharedInstance().currentRoute.outputs.first { $0.portType == .airPlay }?.portName
+    }
 
     func load(url: URL, cookies: [HTTPCookie], title: String, artist: String, artworkURL: URL?, startAt: Double) {
         try? AVAudioSession.sharedInstance().setActive(true)
         nowPlayingTitle = title
         nowPlayingArtist = artist
+        artwork = nil
         pendingStart = startAt
         isReady = false
+        failed = false
+        duration = 0
+        currentTime = startAt
+        hasSubtitles = false
+        subtitlesOn = false
+        subtitleGroup = nil
 
         let asset = AVURLAsset(url: url, options: [AVURLAssetHTTPCookiesKey: cookies])
         let item = AVPlayerItem(asset: asset)
@@ -48,6 +66,15 @@ final class PlayerModel {
         if let artworkURL {
             Task { await loadArtwork(from: artworkURL) }
         }
+        Task { await loadSubtitles(of: item) }
+    }
+
+    func play() {
+        player.play()
+    }
+
+    func pause() {
+        player.pause()
     }
 
     func togglePlay() {
@@ -81,8 +108,9 @@ final class PlayerModel {
         }
     }
 
-    /// The slider: while her finger is down the time follows it; the seek happens on release.
+    /// The scrubber: while her finger is down the time follows it; the seek happens on release.
     func setScrubbing(_ scrubbing: Bool) {
+        guard isScrubbing != scrubbing else { return }
         isScrubbing = scrubbing
         if !scrubbing { seek(to: currentTime) }
     }
@@ -92,12 +120,21 @@ final class PlayerModel {
         if !isScrubbing { seek(to: seconds) }
     }
 
+    func toggleSubtitles() {
+        guard let item = player.currentItem, let group = subtitleGroup, let option = group.options.first else { return }
+        subtitlesOn.toggle()
+        item.select(subtitlesOn ? option : nil, in: group)
+    }
+
     func stop() {
         player.pause()
         removeObservers()
         removeRemoteCommands()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         player.replaceCurrentItem(with: nil)
+        isPlaying = false
+        isReady = false
+        isExternal = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
@@ -115,9 +152,9 @@ final class PlayerModel {
                 Task { @MainActor in self?.isExternal = external }
             },
             item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
-                let ready = item.status == .readyToPlay
+                let status = item.status
                 let seconds = item.duration.seconds
-                Task { @MainActor in self?.itemChanged(ready: ready, duration: seconds) }
+                Task { @MainActor in self?.itemChanged(status: status, duration: seconds) }
             },
         ]
         timeObserver = player.addPeriodicTimeObserver(
@@ -137,9 +174,13 @@ final class PlayerModel {
         }
     }
 
-    private func itemChanged(ready: Bool, duration seconds: Double) {
+    private func itemChanged(status: AVPlayerItem.Status, duration seconds: Double) {
+        if status == .failed {
+            failed = true
+            return
+        }
         if seconds.isFinite, seconds > 0 { duration = seconds }
-        guard ready, !isReady else { return }
+        guard status == .readyToPlay, !isReady else { return }
         isReady = true
         let start = pendingStart
         pendingStart = 0
@@ -157,7 +198,7 @@ final class PlayerModel {
         if duration == 0, let length = player.currentItem?.duration.seconds, length.isFinite, length > 0 {
             duration = length
         }
-        guard !isScrubbing, seconds.isFinite else { return }
+        guard isReady, !isScrubbing, seconds.isFinite else { return }
         currentTime = seconds
         onProgress?(seconds, duration)
     }
@@ -166,6 +207,14 @@ final class PlayerModel {
         guard isPlaying != playing else { return }
         isPlaying = playing
         updateNowPlaying()
+    }
+
+    private func loadSubtitles(of item: AVPlayerItem) async {
+        guard let group = try? await item.asset.loadMediaSelectionGroup(for: .legible),
+              item === player.currentItem
+        else { return }
+        subtitleGroup = group
+        hasSubtitles = !group.options.isEmpty
     }
 
     // MARK: - Lock screen, Control Centre and the Siri Remote

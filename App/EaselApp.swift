@@ -4,7 +4,8 @@ import SwiftUI
 
 @main
 struct EaselApp: App {
-    @State private var app = AppModel()
+    private let container: ModelContainer
+    @State private var app: AppModel
 
     init() {
         // Long-form video, so AirPlay sends the stream itself to the Apple TV and it keeps
@@ -12,6 +13,13 @@ struct EaselApp: App {
         try? AVAudioSession.sharedInstance().setCategory(
             .playback, mode: .moviePlayback, policy: .longFormVideo, options: []
         )
+        do {
+            let container = try ModelContainer(for: Video.self, Bookmark.self)
+            self.container = container
+            _app = State(initialValue: AppModel(context: container.mainContext))
+        } catch {
+            fatalError("Easel couldn't open its library: \(error)")
+        }
     }
 
     var body: some Scene {
@@ -19,6 +27,6 @@ struct EaselApp: App {
             RootView()
                 .environment(app)
         }
-        .modelContainer(for: [Video.self, Bookmark.self])
+        .modelContainer(container)
     }
 }

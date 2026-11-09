@@ -5,40 +5,40 @@ site for easier watching on the Apple TV. It's for personal use and isn't distri
 
 ## What it does
 
-| Tab | |
-|---|---|
-| **Library** | The site's videos as big cards, searchable (titles, tutors, materials). Tap a card to play. |
-| **Favourites** | Videos she has hearted. |
-| **Continue** | Videos she has started, with how far through and how many bookmarks. Tap **Remove…** (top right) to take videos off the list, one at a time or all at once. |
-| **Downloads** | Videos saved on the iPad, which play without internet. Swipe left to remove one. |
-| **Website** | The site itself, signed in. On any video page she can play, a big **Watch in Easel** button appears. |
+Three tabs: **Home**, **Search** and **My Easel**. There is no website tab; the site is used
+behind the scenes, and opened in a sheet only for signing in, live sessions and extras.
 
-The player has large controls: play/pause, back/forward 10 s and 30 s, a scrubber, speed
-(0.5×–1.5×) and **Bookmark this moment**. Bookmarks show as ticks on the scrubber and in a
-list; tap one to jump to it, or the pencil to add a note. Easel remembers where she stopped and
-resumes from there, with a **Start over** button.
-
-The **AirPlay** button (top right of the player) sends the video to the Apple TV. The iPad
-then works as the remote, and the Siri Remote, lock screen and Control Centre controls work too.
-
-**Download** (in the player, or the toolbar on a video page) saves the video to the iPad at
-1080p, about 2.5 GB an hour. Downloads carry on in the background. A downloaded video plays
-from the iPad wherever she opens it, including from Favourites and Continue.
+- **Home**: a big Resume for the video she's in the middle of, then rows for Continue watching,
+  Live this week, New sessions, My favourites and Raw Umber's playlists.
+- **Search**: before typing, ways in by subject, materials, tutor and playlist. Results can be
+  narrowed with the site's own filters (subject, materials, tutor, kind) plus "Not watched".
+- **A page for every video and series**: a big Play/Resume, the parts of a series with progress
+  and download state, her bookmarks, the site's extras (materials lists, model packs), and similar
+  videos. "Download all" for a series.
+- **My Easel**: favourites, bookmarks, downloads and recently watched, each with a full list
+  where things can be removed.
+- **Player**: full-screen video on the iPad with big controls that fade after a few seconds;
+  bookmarks as chips above the scrubber and ticks on it; speed; subtitles when the stream has
+  them; resume with "Start over". **Play on TV** opens the AirPlay picker; once the video is on the
+  TV the iPad becomes a remote with very large buttons. Closing the player shrinks it to a bar
+  above the tabs, and on the TV the video carries on while she browses.
+- **Account** (the person button): signed in or not, download quality (1080p or 720p), sign out,
+  and the Raw Umber website.
 
 ## How it works
 
-- **Website.** A `WKWebView` with the default persistent data store, so she signs in once.
-  `App/Site/EaselBridge.swift` is a small script injected into every page. It reports which video
-  page is showing and the stream URL that the page's own JW Player was given. That stream is a
-  plain HLS stream (`vod.rawumberstudios.com/<id>/master.m3u8`, H.264, no DRM).
-- **Player.** `AVPlayer` with external playback on, so AirPlay sends the stream itself to the
-  Apple TV rather than mirroring the screen. The site's own player has AirPlay disabled.
-- **Downloads.** `AVAssetDownloadURLSession` (background) saves the same HLS stream as a
-  `.movpkg`; `App/Downloads/` keeps an index in Application Support/downloads.json.
-- **Library.** The same search endpoint the site's search page calls (`/x/videosearch`),
-  25 results at a time as she scrolls, sent with her cookies.
-- **Storage.** SwiftData (`Video`, `Bookmark`). The models are CloudKit-compatible but sync is
-  off for now: add the iCloud capability to turn it on.
+- **SiteAPI** (`App/Site/SiteAPI.swift`): a web view parked out of sight on a site page runs the
+  same JSON requests the site's own pages make (`/n/_next/data/...` and `/x/videosearch`), so
+  everything carries her sign-in exactly as the site does. The scripts are in
+  `App/Site/SiteScripts.swift`.
+- **StreamResolver**: to play or download, a second hidden web view loads the video's (or its
+  series') page and reports the stream the site's JW Player was given
+  (`vod.rawumberstudios.com/<id>/master.m3u8`, HLS, no DRM). Easel never builds stream URLs itself.
+- **Player**: `AVPlayer` with external playback on, so AirPlay sends the stream itself to the
+  Apple TV. It belongs to `AppModel`, so playback survives moving around the app.
+- **Downloads**: `AVAssetDownloadURLSession` (background) saves the HLS stream as a `.movpkg`;
+  an index is kept in Application Support/downloads.json.
+- **Storage**: SwiftData (`Video`, `Bookmark`). CloudKit-compatible models; sync is off.
 
 ## Building
 
@@ -60,5 +60,4 @@ internal tester to avoid needing the iPad at hand.
   need her sign-in cookies, they play on the iPad (Easel passes the cookies to `AVPlayer`) but
   the Apple TV fetches AirPlay streams itself and may be refused. Test this with her account first.
 - **Sign in with Google** doesn't work inside an embedded web view; email sign-in does.
-- **Downloads** from the site (model packs, reference photos) aren't handled in the web view yet.
-- **Subtitles.** Many videos have them, but the player doesn't offer a subtitle switch yet.
+- **Live sessions** open on the Raw Umber website; Easel doesn't play them itself.

@@ -15,6 +15,7 @@ final class Video {
     var summary: String = ""
     var dateLive: Date?
     var durationMinutes: Int = 0
+    var isSeries: Bool = false
     var isFavourite: Bool = false
     var favouritedAt: Date?
     /// Where she stopped, in seconds; 0 once she reaches the end.
@@ -23,6 +24,11 @@ final class Video {
     var knownDuration: Double = 0
     var lastWatched: Date?
     var finished: Bool = false
+    /// The series this is a part of, when it was played from a series' page.
+    var seriesSlug: String = ""
+    var seriesTitle: String = ""
+    var partNumber: Int = 0
+    var partCount: Int = 0
     @Relationship(deleteRule: .cascade, inverse: \Bookmark.video)
     var bookmarks: [Bookmark]? = []
 
@@ -40,13 +46,13 @@ final class Video {
         if !info.summary.isEmpty { summary = info.summary }
         if let date = info.dateLive { dateLive = date }
         if info.durationMinutes > 0 { durationMinutes = info.durationMinutes }
+        if info.isSeries { isSeries = true }
     }
 
     var info: VideoInfo {
         VideoInfo(
             id: videoID, slug: slug, title: title, tutor: tutor, thumbnail: thumbnail,
-            summary: summary, dateLive: dateLive, durationMinutes: durationMinutes,
-            isSeries: false, isUpcoming: false
+            summary: summary, dateLive: dateLive, durationMinutes: durationMinutes, isSeries: isSeries
         )
     }
 
@@ -56,6 +62,19 @@ final class Video {
         if finished { return 1 }
         guard lastPosition > 0 else { return nil }
         return min(1, lastPosition / knownDuration)
+    }
+
+    /// "23 min left", while she is part-way through.
+    var remainingText: String? {
+        guard !finished, lastPosition > 0, knownDuration > lastPosition else { return nil }
+        return Timecode.remaining(knownDuration - lastPosition)
+    }
+
+    var isInProgress: Bool { !finished && lastPosition > 0 }
+
+    var seriesContext: SeriesContext? {
+        guard !seriesSlug.isEmpty else { return nil }
+        return SeriesContext(slug: seriesSlug, title: seriesTitle, partNumber: partNumber, partCount: partCount)
     }
 
     var sortedBookmarks: [Bookmark] {
@@ -75,4 +94,12 @@ final class Bookmark {
         self.time = time
         self.note = note
     }
+}
+
+/// The series a part belongs to, remembered so Home can say "Part 2 of 5".
+struct SeriesContext: Hashable, Sendable {
+    var slug: String
+    var title: String
+    var partNumber: Int
+    var partCount: Int
 }
