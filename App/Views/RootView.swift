@@ -17,6 +17,9 @@ struct RootView: View {
             ContinueView()
                 .tabItem { Label("Continue", systemImage: "play.circle") }
                 .tag(AppModel.Tab.continueWatching)
+            DownloadsView()
+                .tabItem { Label("Downloads", systemImage: "arrow.down.circle") }
+                .tag(AppModel.Tab.downloads)
             WebsiteView()
                 .tabItem { Label("Website", systemImage: "globe") }
                 .tag(AppModel.Tab.website)

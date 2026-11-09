@@ -11,6 +11,7 @@ struct VideoCard: View {
     var isFavourite: Bool
     var progress: Double?
     var detail: String?
+    var isDownloaded = false
     var onOpen: () -> Void
     var onToggleFavourite: () -> Void
 
@@ -78,6 +79,16 @@ struct VideoCard: View {
                         }
                     }
                     .frame(height: 6)
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if isDownloaded {
+                    Label("Downloaded", systemImage: "arrow.down.circle.fill")
+                        .font(.caption.weight(.bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.regularMaterial, in: Capsule())
+                        .padding(10)
                 }
             }
             .overlay(alignment: .bottomLeading) {

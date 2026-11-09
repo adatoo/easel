@@ -36,6 +36,9 @@ struct WebsiteView: View {
                             .accessibilityLabel("Video playlists")
                     }
                     ToolbarItemGroup(placement: .topBarTrailing) {
+                        if let video = web.pageVideo, let stream = web.streamURL {
+                            DownloadButton(video: video, streamURL: stream)
+                        }
                         if let video = web.pageVideo {
                             FavouriteToggle(video: video)
                         }

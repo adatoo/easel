@@ -29,6 +29,7 @@ struct ContinueView: View {
                                     isFavourite: video.isFavourite,
                                     progress: video.progress,
                                     detail: detail(for: video),
+                                    isDownloaded: app.downloads.isDownloaded(video.slug),
                                     onOpen: { app.open(video.info) },
                                     onToggleFavourite: { VideoStore.toggleFavourite(video.info, in: context) }
                                 )

@@ -25,6 +25,7 @@ struct LibraryView: View {
                         VideoCard(
                             video: video,
                             isFavourite: favouriteIDs.contains(video.id),
+                            isDownloaded: app.downloads.isDownloaded(video.slug),
                             onOpen: { app.open(video) },
                             onToggleFavourite: { VideoStore.toggleFavourite(video, in: context) }
                         )

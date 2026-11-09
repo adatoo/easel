@@ -100,6 +100,14 @@ struct PlayerScreen: View {
 
             Spacer()
 
+            if request.isOffline {
+                Label("On this iPad", systemImage: "checkmark.circle.fill")
+                    .font(.headline)
+                    .foregroundStyle(.green)
+            } else {
+                DownloadButton(video: request.video, streamURL: request.streamURL)
+            }
+
             AirPlayButton()
                 .frame(width: 56, height: 56)
                 .accessibilityLabel("Play on the TV")

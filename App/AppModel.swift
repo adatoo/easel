@@ -6,12 +6,13 @@ import Observation
 @Observable
 final class AppModel {
     enum Tab: Hashable {
-        case library, favourites, continueWatching, website
+        case library, favourites, continueWatching, downloads, website
     }
 
     var tab: Tab = .library
     var playRequest: PlayRequest?
     let web = WebController()
+    let downloads = DownloadManager()
 
     /// The video to start as soon as its page's stream is found (set when she taps a card).
     @ObservationIgnored private var autoPlaySlug: String?
@@ -22,8 +23,14 @@ final class AppModel {
         }
     }
 
-    /// Opens a video's page in the Website tab and, by default, plays it once the stream is found.
+    /// Plays a video: the copy on the iPad if it's downloaded, otherwise opens its page in the
+    /// Website tab and plays it once the stream is found.
     func open(_ video: VideoInfo, autoPlay: Bool = true) {
+        if autoPlay, let local = downloads.localURL(for: video.slug) {
+            autoPlaySlug = nil
+            playRequest = PlayRequest(video: video, streamURL: local)
+            return
+        }
         tab = .website
         if web.pageVideo?.slug == video.slug, let url = web.streamURL {
             if autoPlay { play(video: web.pageVideo ?? video, url: url) }
@@ -36,7 +43,7 @@ final class AppModel {
     /// The big Watch button on a video page.
     func watchCurrentPage() {
         guard let video = web.pageVideo, let url = web.streamURL else { return }
-        play(video: video, url: url)
+        play(video: video, url: downloads.localURL(for: video.slug) ?? url)
     }
 
     private func streamFound(video: VideoInfo, url: URL) {
@@ -56,4 +63,6 @@ struct PlayRequest: Identifiable {
     let id = UUID()
     let video: VideoInfo
     let streamURL: URL
+
+    var isOffline: Bool { streamURL.isFileURL }
 }

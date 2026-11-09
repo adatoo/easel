@@ -27,6 +27,7 @@ struct FavouritesView: View {
                                     video: video.info,
                                     isFavourite: true,
                                     progress: video.progress,
+                                    isDownloaded: app.downloads.isDownloaded(video.slug),
                                     onOpen: { app.open(video.info) },
                                     onToggleFavourite: { VideoStore.toggleFavourite(video.info, in: context) }
                                 )

@@ -10,6 +10,7 @@ site for easier watching on the Apple TV. It's for personal use and isn't distri
 | **Library** | The site's videos as big cards, searchable (titles, tutors, materials). Tap a card to play. |
 | **Favourites** | Videos she has hearted. |
 | **Continue** | Videos she has started, with how far through and how many bookmarks. Long-press to remove one. |
+| **Downloads** | Videos saved on the iPad, which play without internet. Swipe left to remove one. |
 | **Website** | The site itself, signed in. On any video page she can play, a big **Watch in Easel** button appears. |
 
 The player has large controls: play/pause, back/forward 10 s and 30 s, a scrubber, speed
@@ -20,6 +21,10 @@ resumes from there, with a **Start over** button.
 The **AirPlay** button (top right of the player) sends the video to the Apple TV. The iPad
 then works as the remote, and the Siri Remote, lock screen and Control Centre controls work too.
 
+**Download** (in the player, or the toolbar on a video page) saves the video to the iPad at
+1080p, about 2.5 GB an hour. Downloads carry on in the background. A downloaded video plays
+from the iPad wherever she opens it, including from Favourites and Continue.
+
 ## How it works
 
 - **Website.** A `WKWebView` with the default persistent data store, so she signs in once.
@@ -28,6 +33,8 @@ then works as the remote, and the Siri Remote, lock screen and Control Centre co
   plain HLS stream (`vod.rawumberstudios.com/<id>/master.m3u8`, H.264, no DRM).
 - **Player.** `AVPlayer` with external playback on, so AirPlay sends the stream itself to the
   Apple TV rather than mirroring the screen. The site's own player has AirPlay disabled.
+- **Downloads.** `AVAssetDownloadURLSession` (background) saves the same HLS stream as a
+  `.movpkg`; `App/Downloads/` keeps an index in Application Support/downloads.json.
 - **Library.** The same search endpoint the site's search page calls (`/x/videosearch`),
   25 results at a time as she scrolls, sent with her cookies.
 - **Storage.** SwiftData (`Video`, `Bookmark`). The models are CloudKit-compatible but sync is
