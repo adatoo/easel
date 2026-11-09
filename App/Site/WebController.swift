@@ -20,8 +20,8 @@ final class WebController: NSObject {
 
     /// Called when a video page's stream is found.
     @ObservationIgnored var onStream: ((VideoInfo, URL) -> Void)?
-    /// Called when play is pressed in the site's own player on a page Easel can play.
-    @ObservationIgnored var onSitePlay: (() -> Void)?
+    /// Called when one of the site's players is tapped or starts: play this video in Easel.
+    @ObservationIgnored var onSitePlay: ((VideoInfo, URL) -> Void)?
     @ObservationIgnored private var observations: [NSKeyValueObservation] = []
 
     override init() {
@@ -100,14 +100,13 @@ extension WebController: WKScriptMessageHandler {
             else { return }
             streamURL = url
             onStream?(video, url)
-        case "play":
-            guard (body["slug"] as? String) == pageVideo?.slug, streamURL != nil else {
-                #if DEBUG
-                print("[EaselBridge] play ignored: slug \(body["slug"] ?? "nil"), page \(pageVideo?.slug ?? "nil"), stream \(streamURL?.absoluteString ?? "nil")")
-                #endif
-                return
-            }
-            onSitePlay?()
+        case "playVideo":
+            guard let dict = body["video"] as? [String: Any],
+                  let video = VideoInfo(bridge: dict),
+                  let string = body["url"] as? String,
+                  let url = URL(string: string)
+            else { return }
+            onSitePlay?(video, url)
         case "log":
             #if DEBUG
             print("[EaselBridge]", body["message"] as? String ?? "")

@@ -24,8 +24,8 @@ final class AppModel {
             self?.streamFound(video: video, url: url)
         }
         // Play pressed in the site's own player opens Easel's player instead.
-        web.onSitePlay = { [weak self] in
-            self?.watchCurrentPage()
+        web.onSitePlay = { [weak self] video, url in
+            self?.playFromSite(video: video, url: url)
         }
     }
 
@@ -51,6 +51,13 @@ final class AppModel {
     func watchCurrentPage() {
         returnTab = nil
         guard let video = web.pageVideo, let url = web.streamURL else { return }
+        play(video: video, url: downloads.localURL(for: video.slug) ?? url)
+    }
+
+    /// One of the site's players on the page (the video, a series trailer or an episode).
+    func playFromSite(video: VideoInfo, url: URL) {
+        returnTab = nil
+        guard playRequest == nil else { return }
         play(video: video, url: downloads.localURL(for: video.slug) ?? url)
     }
 
