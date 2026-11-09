@@ -10,6 +10,7 @@
 ///                            duration, isSeries, inTheFuture } | null }
 ///   { type: "stream", slug, url }
 ///   { type: "play", slug }      (play pressed in the site's player; Easel plays it instead)
+///   { type: "log", message }    (printed in debug builds)
 enum EaselBridge {
     static let source = #"""
     (function () {
@@ -19,6 +20,9 @@ enum EaselBridge {
       function post(message) {
         try { window.webkit.messageHandlers.easel.postMessage(message); } catch (e) {}
       }
+
+      // Shown in Xcode's console in debug builds.
+      function log(text) { post({ type: 'log', message: text + ' (' + location.pathname + ')' }); }
 
       function slugFromPath(path) {
         var match = path.match(/^\/n\/videos\/([^\/?#]+)/);
@@ -92,8 +96,10 @@ enum EaselBridge {
         post({ type: 'play', slug: slug });
       }
 
+      // A backstop for any way of starting the video the cover doesn't catch.
       document.addEventListener('play', function (event) {
         if (!(event.target instanceof HTMLMediaElement)) { return; }
+        log('video play event');
         if (playable && playable.path === location.pathname) {
           handOver(playable.slug);
         } else {
@@ -101,8 +107,62 @@ enum EaselBridge {
         }
       }, true);
 
+      // Covers the site's player with Easel's own "Watch in Easel" button, so a tap on the
+      // video never reaches the site's player. Re-checked every second in case the site
+      // rebuilds its player.
+      var coverTimer = null;
+
+      function playerBox() {
+        try {
+          var player = typeof window.jwplayer === 'function' ? window.jwplayer() : null;
+          var container = player && typeof player.getContainer === 'function' ? player.getContainer() : null;
+          if (container && document.body.contains(container)) { return container; }
+        } catch (e) {}
+        var video = document.querySelector('video');
+        return video ? video.parentElement : null;
+      }
+
+      function coverPlayer(slug) {
+        var box = playerBox();
+        if (!box || box.querySelector(':scope > .easel-cover')) { return; }
+        if (getComputedStyle(box).position === 'static') { box.style.position = 'relative'; }
+        var cover = document.createElement('div');
+        cover.className = 'easel-cover';
+        cover.setAttribute('style',
+          'position:absolute;inset:0;z-index:2147483000;display:flex;align-items:center;' +
+          'justify-content:center;background:rgba(0,0,0,0.35);cursor:pointer;' +
+          '-webkit-tap-highlight-color:transparent;');
+        cover.innerHTML =
+          '<div style="display:flex;align-items:center;gap:14px;padding:20px 38px;border-radius:999px;' +
+          'background:#A0522D;color:#fff;font:600 26px -apple-system,system-ui,sans-serif;' +
+          'box-shadow:0 8px 24px rgba(0,0,0,.3)">' +
+          '<svg width="26" height="28" viewBox="0 0 26 28"><path d="M2 1.5v25L25 14z" fill="#fff"/></svg>' +
+          'Watch in Easel</div>';
+        ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'touchstart', 'touchend'].forEach(function (type) {
+          cover.addEventListener(type, function (event) { event.stopPropagation(); }, true);
+        });
+        cover.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          log('cover tapped');
+          handOver(slug);
+        }, true);
+        box.appendChild(cover);
+        log('player covered');
+      }
+
+      function stopCovering() {
+        if (coverTimer) { clearInterval(coverTimer); coverTimer = null; }
+        document.querySelectorAll('.easel-cover').forEach(function (cover) { cover.remove(); });
+      }
+
       function streamReady(slug, path) {
         playable = { slug: slug, path: path };
+        coverPlayer(slug);
+        coverTimer = setInterval(function () {
+          if (location.pathname !== path) { stopCovering(); return; }
+          coverPlayer(slug);
+        }, 1000);
         if (pendingPlay === path) {
           pendingPlay = null;
           handOver(slug);
@@ -121,6 +181,7 @@ enum EaselBridge {
         if (path === currentPath) { return; }
         currentPath = path;
         stopPolling();
+        stopCovering();
         playable = null;
 
         var slug = slugFromPath(path);
@@ -139,6 +200,7 @@ enum EaselBridge {
           var url = streamFromPlayer(info.id);
           if (url) {
             stopPolling();
+            log('stream found');
             post({ type: 'stream', slug: info.slug, url: url });
             streamReady(info.slug, path);
           }

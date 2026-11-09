@@ -101,8 +101,17 @@ extension WebController: WKScriptMessageHandler {
             streamURL = url
             onStream?(video, url)
         case "play":
-            guard (body["slug"] as? String) == pageVideo?.slug, streamURL != nil else { return }
+            guard (body["slug"] as? String) == pageVideo?.slug, streamURL != nil else {
+                #if DEBUG
+                print("[EaselBridge] play ignored: slug \(body["slug"] ?? "nil"), page \(pageVideo?.slug ?? "nil"), stream \(streamURL?.absoluteString ?? "nil")")
+                #endif
+                return
+            }
             onSitePlay?()
+        case "log":
+            #if DEBUG
+            print("[EaselBridge]", body["message"] as? String ?? "")
+            #endif
         default:
             break
         }
