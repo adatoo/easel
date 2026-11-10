@@ -14,7 +14,7 @@ vars:
   PROJECT: Easel.xcodeproj
   SCHEME: Easel
   DERIVED_DATA: build/DerivedData
-  SWIFT_PATHS: App
+  SWIFT_PATHS: App Tests
   PRETTY:
     sh: 'command -v xcbeautify >/dev/null 2>&1 && echo "xcbeautify --quiet" || echo cat'
   # The single version source (ADR-0001).

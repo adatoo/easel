@@ -26,7 +26,8 @@ targets:
   Easel:
     type: application
     platform: iOS
-    scheme: {}
+    scheme:
+      testTargets: [EaselTests]
     sources:
       - path: App
     info:
@@ -57,3 +58,16 @@ targets:
       configs:
         Debug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+
+  EaselTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/EaselTests
+    dependencies:
+      - target: Easel
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.datoos.easel.tests
+        TARGETED_DEVICE_FAMILY: "2"
+        GENERATE_INFOPLIST_FILE: YES
