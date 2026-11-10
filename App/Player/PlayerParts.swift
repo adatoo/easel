@@ -87,7 +87,10 @@ struct Scrubber: View {
                 }
                 Circle()
                     .fill(Theme.text)
-                    .frame(width: player.isScrubbing ? knob * 1.25 : knob, height: player.isScrubbing ? knob * 1.25 : knob)
+                    .frame(
+                        width: player.isScrubbing ? knob * 1.25 : knob,
+                        height: player.isScrubbing ? knob * 1.25 : knob
+                    )
                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
                     .offset(x: width * fraction - (player.isScrubbing ? knob * 0.625 : knob / 2))
             }
@@ -107,7 +110,9 @@ struct Scrubber: View {
         .frame(height: 44)
         .accessibilityElement()
         .accessibilityLabel("Position")
-        .accessibilityValue("\(Timecode.string(player.currentTime)) of \(Timecode.string(player.duration))")
+        .accessibilityValue(
+            "\(Timecode.string(player.currentTime)) of \(Timecode.string(player.duration))"
+        )
         .accessibilityAdjustableAction { direction in
             player.skip(by: direction == .increment ? 10 : -10)
         }

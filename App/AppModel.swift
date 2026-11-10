@@ -164,14 +164,16 @@ final class AppModel {
             guard !Task.isCancelled else { return }
             self.startingSlug = nil
             guard let url else {
-                self.problem = "“\(video.displayTitle)” couldn't be started. Check the internet connection, or open it on the Raw Umber website from the video's page."
+                self.problem =
+                    "“\(video.displayTitle)” couldn't be started. Check the internet connection, or open it on the Raw Umber website from the video's page."
                 return
             }
             await self.start(video, url: url, series: series, at: time)
         }
     }
 
-    private func start(_ video: VideoInfo, url: URL, series: SeriesContext?, at time: Double?) async {
+    private func start(_ video: VideoInfo, url: URL, series: SeriesContext?, at time: Double?) async
+    {
         saveProgress()
         let record = VideoStore.upsert(video, in: context)
         if let series {
@@ -185,14 +187,16 @@ final class AppModel {
 
         var startAt = time ?? 0
         if time == nil, !record.finished, record.lastPosition > 15,
-           record.knownDuration == 0 || record.lastPosition < record.knownDuration - 30 {
+            record.knownDuration == 0 || record.lastPosition < record.knownDuration - 30
+        {
             startAt = record.lastPosition
         }
         try? context.save()
 
         let cookies = url.isFileURL ? [] : await RawUmber.cookies()
         currentRecord = record
-        nowPlaying = NowPlaying(video: video, streamURL: url, resumedFrom: time == nil && startAt > 0 ? startAt : nil)
+        nowPlaying = NowPlaying(
+            video: video, streamURL: url, resumedFrom: time == nil && startAt > 0 ? startAt : nil)
         player.load(
             url: url,
             cookies: cookies,
@@ -293,13 +297,14 @@ final class AppModel {
     private func fetchAndDownload(_ video: VideoInfo, seriesSlug: String?) async {
         let slug = video.slug
         guard !downloads.isDownloaded(slug), downloads.progress(for: slug) == nil,
-              !preparingDownloads.contains(slug)
+            !preparingDownloads.contains(slug)
         else { return }
         preparingDownloads.insert(slug)
         let url = await resolver.stream(for: video, seriesSlug: seriesSlug)
         preparingDownloads.remove(slug)
         guard let url else {
-            problem = "“\(video.displayTitle)” couldn't be downloaded. Check the internet connection and try again."
+            problem =
+                "“\(video.displayTitle)” couldn't be downloaded. Check the internet connection and try again."
             return
         }
         let cookies = await RawUmber.cookies()

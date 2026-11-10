@@ -70,7 +70,8 @@ final class DownloadManager: NSObject {
     override init() {
         super.init()
         completed = Self.loadIndex()
-        let configuration = URLSessionConfiguration.background(withIdentifier: "com.datoos.easel.downloads")
+        let configuration = URLSessionConfiguration.background(
+            withIdentifier: "com.datoos.easel.downloads")
         configuration.isDiscretionary = false
         configuration.sessionSendsLaunchEvents = true
         session = AVAssetDownloadURLSession(
@@ -105,17 +106,24 @@ final class DownloadManager: NSObject {
     // MARK: - Actions
 
     func download(_ video: VideoInfo, from streamURL: URL, cookies: [HTTPCookie]) {
-        guard completed[video.slug] == nil, active[video.slug] == nil, !streamURL.isFileURL else { return }
+        guard completed[video.slug] == nil, active[video.slug] == nil, !streamURL.isFileURL else {
+            return
+        }
         lastError = nil
         // Background download sessions read cookies from the shared store.
-        cookies.forEach { HTTPCookieStorage.shared.setCookie($0) }
+        for cookie in cookies { HTTPCookieStorage.shared.setCookie(cookie) }
         let asset = AVURLAsset(url: streamURL, options: [AVURLAssetHTTPCookiesKey: cookies])
-        guard let task = session.makeAssetDownloadTask(
-            asset: asset,
-            assetTitle: video.title,
-            assetArtworkData: nil,
-            options: [AVAssetDownloadTaskMinimumRequiredMediaBitrateKey: DownloadQuality.current.minimumBitrate]
-        ) else {
+        guard
+            let task = session.makeAssetDownloadTask(
+                asset: asset,
+                assetTitle: video.title,
+                assetArtworkData: nil,
+                options: [
+                    AVAssetDownloadTaskMinimumRequiredMediaBitrateKey: DownloadQuality.current
+                        .minimumBitrate
+                ]
+            )
+        else {
             lastError = "Couldn't start downloading “\(video.displayTitle)”."
             return
         }
@@ -153,7 +161,7 @@ final class DownloadManager: NSObject {
 
     private static func loadIndex() -> [String: DownloadRecord] {
         guard let data = try? Data(contentsOf: indexURL),
-              let records = try? JSONDecoder().decode([DownloadRecord].self, from: data)
+            let records = try? JSONDecoder().decode([DownloadRecord].self, from: data)
         else { return [:] }
         // Drop any whose files have gone (e.g. the system reclaimed space).
         let present = records.filter { FileManager.default.fileExists(atPath: $0.fileURL.path) }
@@ -206,7 +214,8 @@ final class DownloadManager: NSObject {
         if let error {
             if let location { try? FileManager.default.removeItem(at: location) }
             if (error as NSError).code != NSURLErrorCancelled {
-                lastError = "“\(video.displayTitle)” didn't finish downloading: \(error.localizedDescription)"
+                lastError =
+                    "“\(video.displayTitle)” didn't finish downloading: \(error.localizedDescription)"
             }
             return
         }
@@ -225,7 +234,10 @@ final class DownloadManager: NSObject {
     }
 
     private static func size(of url: URL) -> Int64 {
-        guard let files = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey]) else {
+        guard
+            let files = FileManager.default.enumerator(
+                at: url, includingPropertiesForKeys: [.fileSizeKey])
+        else {
             return 0
         }
         var total: Int64 = 0
@@ -247,8 +259,8 @@ final class DownloadManager: NSObject {
 
     nonisolated private static func decode(_ description: String?) -> VideoInfo? {
         guard let data = description?.data(using: .utf8),
-              let fields = try? JSONDecoder().decode([String: String].self, from: data),
-              let slug = fields["slug"]
+            let fields = try? JSONDecoder().decode([String: String].self, from: data),
+            let slug = fields["slug"]
         else { return nil }
         return VideoInfo(
             id: Int(fields["id"] ?? "") ?? 0, slug: slug, title: fields["title"] ?? slug,
@@ -267,19 +279,24 @@ extension DownloadManager: AVAssetDownloadDelegate {
         timeRangeExpectedToLoad: CMTimeRange
     ) {
         let expected = timeRangeExpectedToLoad.duration.seconds
-        guard expected > 0, let video = Self.decode(assetDownloadTask.taskDescription) else { return }
+        guard expected > 0, let video = Self.decode(assetDownloadTask.taskDescription) else {
+            return
+        }
         let loaded = loadedTimeRanges.reduce(0.0) { $0 + $1.timeRangeValue.duration.seconds }
         let fraction = loaded / expected
         MainActor.assumeIsolated { self.updateProgress(slug: video.slug, fraction: fraction) }
     }
 
     nonisolated func urlSession(
-        _ session: URLSession, assetDownloadTask: AVAssetDownloadTask, didFinishDownloadingTo location: URL
+        _ session: URLSession, assetDownloadTask: AVAssetDownloadTask,
+        didFinishDownloadingTo location: URL
     ) {
         MainActor.assumeIsolated { self.didFinish(task: assetDownloadTask, location: location) }
     }
 
-    nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+    nonisolated func urlSession(
+        _ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?
+    ) {
         MainActor.assumeIsolated { self.didComplete(task: task, error: error) }
     }
 }

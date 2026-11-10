@@ -54,7 +54,8 @@ final class Video {
     var info: VideoInfo {
         VideoInfo(
             id: videoID, slug: slug, title: title, tutor: tutor, thumbnail: thumbnail,
-            summary: summary, dateLive: dateLive, durationMinutes: durationMinutes, isSeries: isSeries
+            summary: summary, dateLive: dateLive, durationMinutes: durationMinutes,
+            isSeries: isSeries
         )
     }
 
@@ -79,7 +80,8 @@ final class Video {
 
     var seriesContext: SeriesContext? {
         guard !seriesSlug.isEmpty else { return nil }
-        return SeriesContext(slug: seriesSlug, title: seriesTitle, partNumber: partNumber, partCount: partCount)
+        return SeriesContext(
+            slug: seriesSlug, title: seriesTitle, partNumber: partNumber, partCount: partCount)
     }
 
     var sortedBookmarks: [Bookmark] {

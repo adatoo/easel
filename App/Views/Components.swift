@@ -98,7 +98,8 @@ struct VideoCard: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel((record?.isFavourite ?? false) ? "Remove from favourites" : "Add to favourites")
+            .accessibilityLabel(
+                (record?.isFavourite ?? false) ? "Remove from favourites" : "Add to favourites")
         }
         .overlay(alignment: .bottomTrailing) {
             if let onRemove {
@@ -157,7 +158,9 @@ struct VideoCard: View {
             .foregroundStyle(Theme.text)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(Color.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(
+                Color.black.opacity(0.8), in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
             .padding(.leading, 8)
             .padding(.bottom, 12)
     }
@@ -224,7 +227,10 @@ struct RowSection<Content: View>: View {
     var seeAll: (() -> Void)?
     let content: Content
 
-    init(_ title: String, note: String? = nil, seeAll: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
+    init(
+        _ title: String, note: String? = nil, seeAll: (() -> Void)? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
         self.title = title
         self.note = note
         self.seeAll = seeAll

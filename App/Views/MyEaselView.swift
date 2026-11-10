@@ -23,7 +23,8 @@ struct MyEaselView: View {
     var body: some View {
         let downloads = app.downloads
         let marks = bookmarks.filter { $0.video != nil }
-        let nothingYet = favourites.isEmpty && watched.isEmpty && marks.isEmpty
+        let nothingYet =
+            favourites.isEmpty && watched.isEmpty && marks.isEmpty
             && downloads.downloads.isEmpty && downloads.activeDownloads.isEmpty
 
         ScrollView {
@@ -42,7 +43,8 @@ struct MyEaselView: View {
                     ContentUnavailableView(
                         "Nothing here yet",
                         systemImage: "paintpalette",
-                        description: Text("Videos you favourite, bookmark, download or watch will appear here.")
+                        description: Text(
+                            "Videos you favourite, bookmark, download or watch will appear here.")
                     )
                     .padding(.top, 60)
                 }
@@ -61,7 +63,12 @@ struct MyEaselView: View {
                             title: "Bookmarks",
                             action: marks.count > 4 ? { app.show(.shelf(.bookmarks)) } : nil
                         )
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 20), GridItem(.flexible(), spacing: 20)], spacing: 12) {
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(), spacing: 20),
+                                GridItem(.flexible(), spacing: 20),
+                            ], spacing: 12
+                        ) {
                             ForEach(Array(marks.prefix(4))) { mark in
                                 BookmarkRow(mark: mark) { app.play(mark) }
                             }
@@ -77,12 +84,19 @@ struct MyEaselView: View {
                         seeAll: { app.show(.shelf(.downloads)) }
                     ) {
                         ForEach(downloads.activeDownloads, id: \.video.slug) { entry in
-                            VideoCard(entry.video, subtitle: "Downloading · \(Int(entry.progress * 100))%") {
+                            VideoCard(
+                                entry.video, subtitle: "Downloading · \(Int(entry.progress * 100))%"
+                            ) {
                                 app.show(.shelf(.downloads))
                             }
                         }
                         ForEach(downloads.downloads) { record in
-                            VideoCard(record.info, subtitle: [record.tutor, ByteText.string(record.bytes)].filter { !$0.isEmpty }.joined(separator: " · ")) {
+                            VideoCard(
+                                record.info,
+                                subtitle: [record.tutor, ByteText.string(record.bytes)].filter {
+                                    !$0.isEmpty
+                                }.joined(separator: " · ")
+                            ) {
                                 app.play(record.info)
                             }
                         }
@@ -96,7 +110,11 @@ struct MyEaselView: View {
                                 video.info,
                                 subtitle: watchedSubtitle(video),
                                 removeTitle: "Remove from Recently watched",
-                                onRemove: { withAnimation { VideoStore.removeFromWatched(video, in: app.context) } }
+                                onRemove: {
+                                    withAnimation {
+                                        VideoStore.removeFromWatched(video, in: app.context)
+                                    }
+                                }
                             ) {
                                 app.open(video.info)
                             }
@@ -180,7 +198,8 @@ struct ShelfView: View {
                     if canEdit {
                         if isEditing, shelf != .downloads, shelf != .bookmarks {
                             Button("Clear all", role: .destructive) { confirmClear = true }
-                                .buttonStyle(PillButtonStyle(kind: .outline, height: 48, fontSize: 16))
+                                .buttonStyle(
+                                    PillButtonStyle(kind: .outline, height: 48, fontSize: 16))
                         }
                         Button(isEditing ? "Done" : "Remove…") {
                             withAnimation { isEditing.toggle() }
@@ -203,7 +222,9 @@ struct ShelfView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.ground, for: .navigationBar)
-        .confirmationDialog("Clear \(title)?", isPresented: $confirmClear, titleVisibility: .visible) {
+        .confirmationDialog(
+            "Clear \(title)?", isPresented: $confirmClear, titleVisibility: .visible
+        ) {
             Button("Clear all", role: .destructive) { clearAll() }
         } message: {
             Text("Bookmarks, favourites and downloads are kept unless you're clearing them.")
@@ -286,7 +307,8 @@ struct ShelfView: View {
 
     private func subtitle(_ video: Video) -> String? {
         guard shelf == .continueWatching else { return nil }
-        return [video.tutor, video.remainingText ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
+        return [video.tutor, video.remainingText ?? ""].filter { !$0.isEmpty }.joined(
+            separator: " · ")
     }
 
     private func remove(_ video: Video) {
@@ -320,11 +342,15 @@ struct ShelfView: View {
             ContentUnavailableView(
                 "No bookmarks yet",
                 systemImage: "bookmark",
-                description: Text("Tap Bookmark in the player to mark a moment you want to come back to.")
+                description: Text(
+                    "Tap Bookmark in the player to mark a moment you want to come back to.")
             )
             .padding(.top, 40)
         }
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 20), GridItem(.flexible(), spacing: 20)], spacing: 12) {
+        LazyVGrid(
+            columns: [GridItem(.flexible(), spacing: 20), GridItem(.flexible(), spacing: 20)],
+            spacing: 12
+        ) {
             ForEach(marks) { mark in
                 BookmarkRow(mark: mark) { app.play(mark) }
                     .overlay(alignment: .trailing) {
@@ -346,7 +372,9 @@ struct ShelfView: View {
                                 } label: {
                                     Image(systemName: "trash")
                                 }
-                                .buttonStyle(CircleButtonStyle(size: 48, fill: Color(hex: 0xB3261E)))
+                                .buttonStyle(
+                                    CircleButtonStyle(size: 48, fill: Color(hex: 0xB3261E))
+                                )
                                 .accessibilityLabel("Delete bookmark")
                             }
                             .padding(.trailing, 12)
@@ -377,10 +405,12 @@ struct ShelfView: View {
         }
         VideoGrid {
             ForEach(downloads.activeDownloads, id: \.video.slug) { entry in
-                VideoCard(entry.video, width: nil, subtitle: "Downloading · \(Int(entry.progress * 100))%") {}
-                    .overlay {
-                        RemoveCover(title: "Cancel") { downloads.cancel(entry.video.slug) }
-                    }
+                VideoCard(
+                    entry.video, width: nil, subtitle: "Downloading · \(Int(entry.progress * 100))%"
+                ) {}
+                .overlay {
+                    RemoveCover(title: "Cancel") { downloads.cancel(entry.video.slug) }
+                }
             }
             ForEach(downloads.downloads) { record in
                 VideoCard(record.info, width: nil, subtitle: ByteText.string(record.bytes)) {

@@ -37,10 +37,14 @@ final class PlayerModel {
 
     /// The Apple TV's name while AirPlaying, e.g. "Living Room".
     var routeName: String? {
-        AVAudioSession.sharedInstance().currentRoute.outputs.first { $0.portType == .airPlay }?.portName
+        AVAudioSession.sharedInstance().currentRoute.outputs.first { $0.portType == .airPlay }?
+            .portName
     }
 
-    func load(url: URL, cookies: [HTTPCookie], title: String, artist: String, artworkURL: URL?, startAt: Double) {
+    func load(
+        url: URL, cookies: [HTTPCookie], title: String, artist: String, artworkURL: URL?,
+        startAt: Double
+    ) {
         try? AVAudioSession.sharedInstance().setActive(true)
         nowPlayingTitle = title
         nowPlayingArtist = artist
@@ -121,7 +125,9 @@ final class PlayerModel {
     }
 
     func toggleSubtitles() {
-        guard let item = player.currentItem, let group = subtitleGroup, let option = group.options.first else { return }
+        guard let item = player.currentItem, let group = subtitleGroup,
+            let option = group.options.first
+        else { return }
         subtitlesOn.toggle()
         item.select(subtitlesOn ? option : nil, in: group)
     }
@@ -143,11 +149,13 @@ final class PlayerModel {
     private func observe(_ item: AVPlayerItem) {
         removeObservers()
         observations = [
-            player.observe(\.timeControlStatus, options: [.initial, .new]) { [weak self] player, _ in
+            player.observe(\.timeControlStatus, options: [.initial, .new]) {
+                [weak self] player, _ in
                 let playing = player.timeControlStatus != .paused
                 Task { @MainActor in self?.setPlaying(playing) }
             },
-            player.observe(\.isExternalPlaybackActive, options: [.initial, .new]) { [weak self] player, _ in
+            player.observe(\.isExternalPlaybackActive, options: [.initial, .new]) {
+                [weak self] player, _ in
                 let external = player.isExternalPlaybackActive
                 Task { @MainActor in self?.isExternal = external }
             },
@@ -166,7 +174,7 @@ final class PlayerModel {
     }
 
     private func removeObservers() {
-        observations.forEach { $0.invalidate() }
+        for observation in observations { observation.invalidate() }
         observations = []
         if let timeObserver {
             player.removeTimeObserver(timeObserver)
@@ -195,7 +203,9 @@ final class PlayerModel {
     }
 
     private func tick(_ seconds: Double) {
-        if duration == 0, let length = player.currentItem?.duration.seconds, length.isFinite, length > 0 {
+        if duration == 0, let length = player.currentItem?.duration.seconds, length.isFinite,
+            length > 0
+        {
             duration = length
         }
         guard isReady, !isScrubbing, seconds.isFinite else { return }
@@ -211,7 +221,7 @@ final class PlayerModel {
 
     private func loadSubtitles(of item: AVPlayerItem) async {
         guard let group = try? await item.asset.loadMediaSelectionGroup(for: .legible),
-              item === player.currentItem
+            item === player.currentItem
         else { return }
         subtitleGroup = group
         hasSubtitles = !group.options.isEmpty
@@ -233,7 +243,8 @@ final class PlayerModel {
         let command = center.changePlaybackPositionCommand
         command.isEnabled = true
         let token = command.addTarget { [weak self] event in
-            guard let model = self, let event = event as? MPChangePlaybackPositionCommandEvent else {
+            guard let model = self, let event = event as? MPChangePlaybackPositionCommandEvent
+            else {
                 return .commandFailed
             }
             let position = event.positionTime
@@ -243,7 +254,9 @@ final class PlayerModel {
         commandTargets.append((command, token))
     }
 
-    private func add(_ command: MPRemoteCommand, _ action: @escaping @Sendable @MainActor (PlayerModel) -> Void) {
+    private func add(
+        _ command: MPRemoteCommand, _ action: @escaping @Sendable @MainActor (PlayerModel) -> Void
+    ) {
         command.isEnabled = true
         let token = command.addTarget { [weak self] _ in
             guard let model = self else { return .commandFailed }
@@ -279,7 +292,7 @@ final class PlayerModel {
 
     private func loadArtwork(from url: URL) async {
         guard let result = try? await URLSession.shared.data(from: url),
-              let image = UIImage(data: result.0)
+            let image = UIImage(data: result.0)
         else { return }
         artwork = Self.makeArtwork(image)
         updateNowPlaying()

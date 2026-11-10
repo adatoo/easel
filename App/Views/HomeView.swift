@@ -54,13 +54,18 @@ struct HomeView: View {
                 }
 
                 if inProgress.count > 1 {
-                    RowSection("Continue watching", seeAll: { app.show(.shelf(.continueWatching)) }) {
+                    RowSection("Continue watching", seeAll: { app.show(.shelf(.continueWatching)) })
+                    {
                         ForEach(Array(inProgress.dropFirst().prefix(12))) { video in
                             VideoCard(
                                 video.info,
                                 subtitle: continueSubtitle(video),
                                 removeTitle: "Remove from Continue watching",
-                                onRemove: { withAnimation { VideoStore.removeFromContinue(video, in: app.context) } }
+                                onRemove: {
+                                    withAnimation {
+                                        VideoStore.removeFromContinue(video, in: app.context)
+                                    }
+                                }
                             ) {
                                 app.play(video.info, series: video.seriesContext)
                             }
@@ -182,13 +187,17 @@ private struct ResumeHero: View {
                 HStack(spacing: 14) {
                     PlayButton(video: info, series: video.seriesContext, title: "Resume")
                     if let series = video.seriesContext {
-                        Button(series.partCount > 0 ? "All \(series.partCount) parts" : "All parts") {
-                            app.open(VideoInfo(id: 0, slug: series.slug, title: series.title, isSeries: true))
+                        Button(series.partCount > 0 ? "All \(series.partCount) parts" : "All parts")
+                        {
+                            app.open(
+                                VideoInfo(
+                                    id: 0, slug: series.slug, title: series.title, isSeries: true))
                         }
                         .buttonStyle(PillButtonStyle(kind: .secondary, height: 64, fontSize: 19))
                     } else {
                         Button("Details") { app.open(info) }
-                            .buttonStyle(PillButtonStyle(kind: .secondary, height: 64, fontSize: 19))
+                            .buttonStyle(
+                                PillButtonStyle(kind: .secondary, height: 64, fontSize: 19))
                     }
                     Menu {
                         Button(role: .destructive) {
@@ -294,7 +303,9 @@ struct PlaylistTile: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 20)
                 .frame(width: width, height: 88)
-                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(
+                    Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -24,13 +24,15 @@ final class StreamResolver: NSObject {
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = .all
         configuration.userContentController.addUserScript(
-            WKUserScript(source: SiteScripts.streams, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+            WKUserScript(
+                source: SiteScripts.streams, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         )
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
-        webView.configuration.userContentController.add(WeakScriptMessageHandler(self), name: "easelStreams")
+        webView.configuration.userContentController.add(
+            WeakScriptMessageHandler(self), name: "easelStreams")
         #if DEBUG
-        webView.isInspectable = true
+            webView.isInspectable = true
         #endif
     }
 
@@ -56,7 +58,9 @@ final class StreamResolver: NSObject {
 
         // A series page has a player for every part she can watch, so try that first if it's
         // already the page loaded.
-        if let seriesSlug, currentSlug == seriesSlug, let url = await wait(for: video.id, seconds: 4) {
+        if let seriesSlug, currentSlug == seriesSlug,
+            let url = await wait(for: video.id, seconds: 4)
+        {
             return url
         }
         if Task.isCancelled { return nil }
@@ -96,10 +100,10 @@ extension StreamResolver: WKScriptMessageHandler {
         _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
     ) {
         guard let body = message.body as? [String: Any],
-              (body["type"] as? String) == "stream",
-              let id = body["id"] as? Int,
-              let string = body["url"] as? String,
-              let url = URL(string: string)
+            (body["type"] as? String) == "stream",
+            let id = body["id"] as? Int,
+            let string = body["url"] as? String,
+            let url = URL(string: string)
         else { return }
         streams[id] = url
     }

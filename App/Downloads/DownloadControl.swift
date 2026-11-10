@@ -14,7 +14,9 @@ struct DownloadControl: View {
     @State private var confirmRemove = false
 
     private enum Phase {
-        case idle, preparing, downloading(Double), done
+        case idle, preparing
+        case downloading(Double)
+        case done
     }
 
     private var phase: Phase {
@@ -33,7 +35,9 @@ struct DownloadControl: View {
         }
         .buttonStyle(.plain)
         .animation(nil, value: app.downloads.progress(for: video.slug))
-        .confirmationDialog("Remove the download?", isPresented: $confirmRemove, titleVisibility: .visible) {
+        .confirmationDialog(
+            "Remove the download?", isPresented: $confirmRemove, titleVisibility: .visible
+        ) {
             Button("Remove from iPad", role: .destructive) { app.downloads.delete(video.slug) }
         } message: {
             Text("You can still watch it online.")
@@ -54,7 +58,8 @@ struct DownloadControl: View {
         switch phase {
         case .idle: return "Download"
         case .preparing: return "Getting ready to download"
-        case .downloading(let progress): return "Downloading, \(Int(progress * 100)) percent. Cancel"
+        case .downloading(let progress):
+            return "Downloading, \(Int(progress * 100)) percent. Cancel"
         case .done: return "Downloaded. Remove download"
         }
     }
