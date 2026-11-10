@@ -1,8 +1,9 @@
 # Easel: notes for coding agents
 
-An iPad app (iPadOS 17+, SwiftUI, SwiftData) that wraps rawumberstudios.com for Arif's wife:
+An iPad app (iPadOS 17+, SwiftUI, SwiftData) that wraps rawumberstudios.com for a subscriber:
 browse and search the videos, favourites, continue watching, and a big-control AVPlayer that
-AirPlays to the Apple TV. Personal use only, never on the App Store. README.md explains the features.
+AirPlays to the Apple TV. Open source (MIT, ADR-0004) and public, but never on the App Store.
+README.md explains the features.
 
 ## Layout
 
@@ -29,7 +30,10 @@ AirPlays to the Apple TV. Personal use only, never on the App Store. README.md e
   Don't crawl or bulk-download the catalogue.
 - Keep the UI big and simple. The person using it struggles with small video controls.
 - Swift 5 language mode with minimal concurrency checking for now. Raise to Swift 6 /
-  `complete` (as in Arif's other apps) once it has settled on her iPad.
+  `complete` (as in the owner's other apps) once it has settled on her iPad.
+- The repo is public: CI runs on GitHub-hosted runners only, and the shared workflows are
+  vendored (ADR-0005). Never register a self-hosted runner or set `LINUX_RUNNER`/`MAC_RUNNER`.
+  Never commit anything personal: `.env.local`, testers' details, or keys.
 - SwiftData models stay CloudKit-compatible: defaults on every property, optional relationships,
   no `@Attribute(.unique)`.
 

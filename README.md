@@ -1,7 +1,13 @@
 # Easel
 
 An iPad app that wraps the [Raw Umber Studios](https://rawumberstudios.com/n/playlists) video
-site for easier watching on the Apple TV. It's for personal use and isn't distributed.
+site for easier watching on the Apple TV, with big, simple controls. It was made for one
+subscriber and isn't on the App Store, but the source is open (MIT) for anyone who wants to build
+their own copy.
+
+Easel isn't affiliated with Raw Umber Studios. It needs your own sign-in and subscription, and
+plays only what the site's own player is given for your account
+([ADR-0002](docs/adr/0002-site-through-hidden-web-views.md)).
 
 ## What it does
 
@@ -47,10 +53,16 @@ task ci      # everything CI runs; run it before pushing
 To put a development build on her iPad, connect it once by cable, turn on **Settings ▸ Privacy &
 Security ▸ Developer Mode**, then choose the iPad in Xcode and Run.
 
+### Building your own copy
+
+Set `DEVELOPMENT_TEAM` and the bundle IDs in `project.yml` (and `bundleID` in
+`scripts/app-store-connect.swift`) to your own Apple developer team and identifiers, then
+`task dev` and run it on your iPad from Xcode.
+
 ## Releasing to TestFlight
 
 Every merge to `main` is tagged `vX.Y.Z` from `VERSION`, and the tag's `testflight` workflow
-archives and uploads that build on the Mac mini ([ADR-0003](docs/adr/0003-testflight-from-ci.md)).
+archives and uploads that build on GitHub's hosted macOS ([ADR-0003](docs/adr/0003-testflight-from-ci.md)).
 Its What to Test comes from the version's `CHANGELOG.md` section. The internal **Family**
 TestFlight group gets every build, so she only has to update in the TestFlight app.
 
@@ -74,3 +86,7 @@ the latest `testflight` workflow (Actions ▸ testflight ▸ Run workflow).
   the Apple TV fetches AirPlay streams itself and may be refused. Test this with her account first.
 - **Sign in with Google** doesn't work inside an embedded web view; email sign-in does.
 - **Live sessions** open on the Raw Umber website; Easel doesn't play them itself.
+
+## Licence
+
+[MIT](LICENSE).
