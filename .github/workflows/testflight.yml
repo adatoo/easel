@@ -1,0 +1,78 @@
+name: testflight
+
+# Uploads each release to TestFlight (ADR-0003). tag.yml tags every merge
+# through the adatoo-automation App, so the tag starts this workflow. It isn't
+# part of the CI Gate, so a failed upload never blocks a merge; re-run it by
+# hand (workflow_dispatch) once the cause is fixed. It needs the Mac mini and
+# the Actions secrets ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 (the .p8 file's
+# contents). Signing is automatic through the API key, as in Silicon Wallet.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    name: upload
+    runs-on: ${{ vars.MAC_RUNNER || 'macos-14' }}
+    timeout-minutes: 60
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The build number is the commit count.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install Task and XcodeGen if missing
+        run: |
+          command -v task >/dev/null || brew install go-task
+          command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Write the App Store Connect API key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_P8" ]; then
+            echo "::error::The ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 secrets aren't set (ADR-0003)."
+            exit 1
+          fi
+          umask 077
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc-key.p8"
+      - name: task release
+        id: release
+        env:
+          ASC_KEY_PATH: ${{ runner.temp }}/asc-key.p8
+        run: |
+          build_number="$(git rev-list --count HEAD)"
+          echo "build-number=$build_number" >> "$GITHUB_OUTPUT"
+          task release BUILD_NUMBER="$build_number"
+      # What to Test is a nicety: the build is already up, so a failure only warns.
+      - name: Set What to Test from CHANGELOG.md
+        env:
+          ASC_KEY_PATH: ${{ runner.temp }}/asc-key.p8
+          BUILD_NUMBER: ${{ steps.release.outputs.build-number }}
+        run: |
+          task testflight:notes BUILD_NUMBER="$BUILD_NUMBER" \
+            || echo "::warning::The build uploaded, but its What to Test wasn't set."
+      # Archiving on the runner makes an "Apple Development: Created via API"
+      # certificate; revoke it, pass or fail, so they don't reach Apple's limit.
+      - name: Revoke the certificates made through the API key
+        if: always()
+        env:
+          ASC_KEY_PATH: ${{ runner.temp }}/asc-key.p8
+        run: |
+          if [ -f "$ASC_KEY_PATH" ]; then
+            task release:prune-certificates || echo "::warning::The API-made development certificates weren't revoked."
+          fi
+      - name: Remove the API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/asc-key.p8"

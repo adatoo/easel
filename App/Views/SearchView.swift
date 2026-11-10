@@ -39,7 +39,10 @@ struct SearchView: View {
         .scrollDismissesKeyboard(.immediately)
         .background(Theme.ground)
         .toolbar(.hidden, for: .navigationBar)
-        .task(id: SearchKey(query: query, notWatchedOnly: notWatchedOnly, siteVersion: app.siteVersion)) {
+        .task(
+            id: SearchKey(
+                query: query, notWatchedOnly: notWatchedOnly, siteVersion: app.siteVersion)
+        ) {
             // Wait for a pause in typing before asking the site.
             if !query.trimmedText.isEmpty {
                 try? await Task.sleep(for: .milliseconds(450))
@@ -113,7 +116,9 @@ struct SearchView: View {
     private var browse: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Subject")
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 6), spacing: 16) {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 6), spacing: 16
+            ) {
                 ForEach(Self.shortcuts) { shortcut in
                     Button {
                         var next = SearchQuery()
@@ -134,7 +139,10 @@ struct SearchView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
                         .frame(height: 124)
-                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(
+                            Theme.surface,
+                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        )
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -217,7 +225,9 @@ struct SearchView: View {
                         }
                     }
                 } label: {
-                    FilterChip(title: query.subject?.label ?? "Subject", active: query.subject != nil, isMenu: true)
+                    FilterChip(
+                        title: query.subject?.label ?? "Subject", active: query.subject != nil,
+                        isMenu: true)
                 }
 
                 Menu {
@@ -234,7 +244,8 @@ struct SearchView: View {
                         }
                     }
                 } label: {
-                    FilterChip(title: materialsTitle, active: !query.materials.isEmpty, isMenu: true)
+                    FilterChip(
+                        title: materialsTitle, active: !query.materials.isEmpty, isMenu: true)
                 }
 
                 Menu {
@@ -247,7 +258,9 @@ struct SearchView: View {
                         }
                     }
                 } label: {
-                    FilterChip(title: query.tutor?.name ?? "Tutor", active: query.tutor != nil, isMenu: true)
+                    FilterChip(
+                        title: query.tutor?.name ?? "Tutor", active: query.tutor != nil,
+                        isMenu: true)
                 }
 
                 Menu {
@@ -260,7 +273,8 @@ struct SearchView: View {
                         }
                     }
                 } label: {
-                    FilterChip(title: query.type?.label ?? "Kind", active: query.type != nil, isMenu: true)
+                    FilterChip(
+                        title: query.type?.label ?? "Kind", active: query.type != nil, isMenu: true)
                 }
 
                 Rectangle().fill(Theme.line).frame(width: 1, height: 28).padding(.horizontal, 6)

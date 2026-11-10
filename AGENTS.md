@@ -17,7 +17,9 @@ AirPlays to the Apple TV. Personal use only, never on the App Store. README.md e
 - `App/Downloads/`: background HLS downloads.
 - `App/AppModel.swift`: navigation, what's playing, bookmarks, downloads.
 - `App/Theme.swift`: colours and button styles.
-- `project.yml`: the XcodeGen spec.
+- `Tests/EaselTests/`: unit tests (Swift Testing) for the pure helpers.
+- `project.yml`: the XcodeGen spec (ADR-0001). `VERSION` is the single version source.
+- `docs/architecture.md` and `docs/adr/`: how it fits together and why.
 
 ## Rules
 
@@ -33,5 +35,20 @@ AirPlays to the Apple TV. Personal use only, never on the App Store. README.md e
 
 ## Commands
 
-- `task open`: generate the project and open it.
+`Taskfile.yml` is the only command surface; `task` lists everything.
+
+- `task setup`: install the git hooks (once per clone).
+- `task dev`: generate the project and open it in Xcode.
 - `task build`: Simulator build, unsigned.
+- `task test`: unit tests on an iPad simulator.
+- `task fmt` / `task fmt:check`: swift-format.
+- `task lint`, `task secrets`: workflows, shell scripts, Taskfile; gitleaks.
+- `task ci`: everything CI runs; run it before pushing.
+- `task release`, `task testflight:*`: TestFlight by hand (ADR-0003).
+
+## Releasing
+
+Every PR bumps `VERSION` and adds its `CHANGELOG.md` section in the last commit,
+`chore(release): bump version to X.Y.Z`. That section becomes the build's What to Test, so write
+it for her. Merging tags `vX.Y.Z`, and the tag's `testflight` workflow uploads the build; the
+Family group gets it automatically.

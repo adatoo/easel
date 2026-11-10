@@ -20,7 +20,8 @@ struct VideoDetailView: View {
     private var isSeries: Bool { info.isSeries || !parts.isEmpty }
 
     var body: some View {
-        let records = Dictionary(library.map { ($0.slug, $0) }, uniquingKeysWith: { first, _ in first })
+        let records = Dictionary(
+            library.map { ($0.slug, $0) }, uniquingKeysWith: { first, _ in first })
         let marks = bookmarks(records)
         let extras = page?.extras ?? []
         let materials = page?.materials ?? []
@@ -148,7 +149,9 @@ struct VideoDetailView: View {
     private var metaText: String {
         var items: [String] = []
         if !info.tutor.isEmpty { items.append(info.tutor) }
-        if !isSeries, !info.isUpcoming, let date = info.dateLive { items.append(VideoInfo.shortDate(date)) }
+        if !isSeries, !info.isUpcoming, let date = info.dateLive {
+            items.append(VideoInfo.shortDate(date))
+        }
         if info.hasSubtitles { items.append("Subtitles") }
         return items.joined(separator: " · ")
     }
@@ -185,7 +188,9 @@ struct VideoDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             if let target = resumeTarget(records) {
                 HStack(spacing: 12) {
-                    PlayButton(video: target.part, series: context(forPart: target.index), title: target.title)
+                    PlayButton(
+                        video: target.part, series: context(forPart: target.index),
+                        title: target.title)
                     if let trailer = page?.trailer, trailer.accessible {
                         Button("Trailer") {
                             app.play(trailer, series: context(forPart: -1))
@@ -203,7 +208,9 @@ struct VideoDetailView: View {
                         app.downloadAll(toDownload, seriesSlug: info.slug)
                     } label: {
                         Label(
-                            toDownload.count == watchable.count ? "Download all \(toDownload.count)" : "Download the other \(toDownload.count)",
+                            toDownload.count == watchable.count
+                                ? "Download all \(toDownload.count)"
+                                : "Download the other \(toDownload.count)",
                             systemImage: "arrow.down.to.line"
                         )
                     }
@@ -247,26 +254,35 @@ struct VideoDetailView: View {
     }
 
     /// Which part the big button plays: the one she's in the middle of, else the next unwatched.
-    private func resumeTarget(_ records: [String: Video]) -> (part: VideoInfo, index: Int, title: String)? {
+    private func resumeTarget(_ records: [String: Video]) -> (
+        part: VideoInfo, index: Int, title: String
+    )? {
         let watchable = parts.enumerated().filter { $0.element.accessible }
         guard !watchable.isEmpty else { return nil }
 
-        let inProgress = watchable
+        let inProgress =
+            watchable
             .filter { records[$0.element.slug]?.isInProgress == true }
-            .max { (records[$0.element.slug]?.lastWatched ?? .distantPast) < (records[$1.element.slug]?.lastWatched ?? .distantPast) }
+            .max {
+                (records[$0.element.slug]?.lastWatched ?? .distantPast)
+                    < (records[$1.element.slug]?.lastWatched ?? .distantPast)
+            }
         if let current = inProgress {
             return (current.element, current.offset, "Resume part \(current.offset + 1)")
         }
         if let next = watchable.first(where: { records[$0.element.slug]?.finished != true }) {
             let started = watchable.contains { records[$0.element.slug]?.finished == true }
-            return (next.element, next.offset, started ? "Play part \(next.offset + 1)" : "Play part 1")
+            return (
+                next.element, next.offset, started ? "Play part \(next.offset + 1)" : "Play part 1"
+            )
         }
         let first = watchable[0]
         return (first.element, first.offset, "Watch again")
     }
 
     private func context(forPart index: Int) -> SeriesContext {
-        SeriesContext(slug: info.slug, title: info.title, partNumber: index + 1, partCount: parts.count)
+        SeriesContext(
+            slug: info.slug, title: info.title, partNumber: index + 1, partCount: parts.count)
     }
 
     // MARK: - Parts of a series
@@ -329,7 +345,8 @@ struct VideoDetailView: View {
                         }
                         Text(stateText(part, record: record))
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(record?.isInProgress == true ? Theme.accent : Theme.secondary)
+                            .foregroundStyle(
+                                record?.isInProgress == true ? Theme.accent : Theme.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -464,9 +481,12 @@ struct VideoDetailView: View {
                                 .foregroundStyle(Theme.text)
                                 .multilineTextAlignment(.leading)
                             Spacer(minLength: 0)
-                            Image(systemName: RawUmber.videoSlug(from: link.url) == nil ? "arrow.up.right" : "play.rectangle")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Theme.secondary)
+                            Image(
+                                systemName: RawUmber.videoSlug(from: link.url) == nil
+                                    ? "arrow.up.right" : "play.rectangle"
+                            )
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Theme.secondary)
                         }
                         .frame(minHeight: 52)
                         .contentShape(Rectangle())
@@ -474,10 +494,13 @@ struct VideoDetailView: View {
                     .buttonStyle(.plain)
                     .overlay(alignment: .top) { Theme.line.opacity(0.6).frame(height: 1) }
                 }
-                Text(extras.allSatisfy { RawUmber.videoSlug(from: $0.url) != nil } ? "These open in Easel." : "Pages open the Raw Umber website.")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Theme.secondary)
-                    .padding(.top, 12)
+                Text(
+                    extras.allSatisfy { RawUmber.videoSlug(from: $0.url) != nil }
+                        ? "These open in Easel." : "Pages open the Raw Umber website."
+                )
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.secondary)
+                .padding(.top, 12)
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -494,7 +517,8 @@ struct VideoDetailView: View {
             failed = false
             // Find the stream now, so Play is quick when she taps it.
             let series = loaded.video.isSeries || !loaded.parts.isEmpty
-            let playable = series
+            let playable =
+                series
                 ? loaded.parts.contains(where: \.accessible)
                 : loaded.video.accessible && !loaded.video.isUpcoming
             if playable, !app.downloads.isDownloaded(loaded.video.slug) {

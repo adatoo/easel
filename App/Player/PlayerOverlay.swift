@@ -51,7 +51,10 @@ struct PlayerOverlay: View {
             }
         }
         .background(Color.black.ignoresSafeArea())
-        .alert(noteTitle, isPresented: Binding(get: { editingMark != nil }, set: { if !$0 { editingMark = nil } })) {
+        .alert(
+            noteTitle,
+            isPresented: Binding(get: { editingMark != nil }, set: { if !$0 { editingMark = nil } })
+        ) {
             TextField("e.g. mixing the shadow colour", text: $noteText)
             Button("Save") { saveNote() }
             Button("Delete bookmark", role: .destructive) { deleteMark() }
@@ -85,7 +88,10 @@ struct PlayerOverlay: View {
             if controlsVisible {
                 ZStack {
                     LinearGradient(
-                        colors: [Color.black.opacity(0.7), Color.black.opacity(0.15), Color.black.opacity(0.75)],
+                        colors: [
+                            Color.black.opacity(0.7), Color.black.opacity(0.15),
+                            Color.black.opacity(0.75),
+                        ],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -225,7 +231,8 @@ struct PlayerOverlay: View {
             }
 
             Scrubber(player: player, bookmarks: marks.map(\.time))
-                .simultaneousGesture(DragGesture(minimumDistance: 0).onEnded { _ in scheduleHide() })
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0).onEnded { _ in scheduleHide() })
 
             HStack {
                 Text(Timecode.string(player.currentTime))
@@ -283,7 +290,8 @@ struct PlayerOverlay: View {
         guard player.isPlaying else { return }
         hideTask = Task {
             try? await Task.sleep(for: .seconds(4))
-            guard !Task.isCancelled, player.isPlaying, !player.isScrubbing, editingMark == nil else { return }
+            guard !Task.isCancelled, player.isPlaying, !player.isScrubbing, editingMark == nil
+            else { return }
             controlsVisible = false
         }
     }
@@ -390,12 +398,16 @@ private struct RemoteLayout: View {
                     Spacer(minLength: 24)
 
                     VStack(spacing: 6) {
-                        Scrubber(player: player, bookmarks: marks.map(\.time), barHeight: 10, knob: 32, track: Theme.line)
+                        Scrubber(
+                            player: player, bookmarks: marks.map(\.time), barHeight: 10, knob: 32,
+                            track: Theme.line)
                         HStack {
                             Text(Timecode.string(player.currentTime)).foregroundStyle(Theme.text)
                             Spacer()
-                            Text("-" + Timecode.string(max(0, player.duration - player.currentTime)))
-                                .foregroundStyle(Theme.secondary)
+                            Text(
+                                "-" + Timecode.string(max(0, player.duration - player.currentTime))
+                            )
+                            .foregroundStyle(Theme.secondary)
                         }
                         .font(.system(size: 18, weight: .semibold).monospacedDigit())
                     }
@@ -403,11 +415,19 @@ private struct RemoteLayout: View {
                     Spacer(minLength: 24)
 
                     HStack(spacing: 26) {
-                        SkipButton(seconds: -30, size: 88, fill: Theme.raised) { player.skip(by: -30) }
-                        SkipButton(seconds: -10, size: 112, fill: Theme.raised) { player.skip(by: -10) }
+                        SkipButton(seconds: -30, size: 88, fill: Theme.raised) {
+                            player.skip(by: -30)
+                        }
+                        SkipButton(seconds: -10, size: 112, fill: Theme.raised) {
+                            player.skip(by: -10)
+                        }
                         PlayPauseButton(player: player, size: 156)
-                        SkipButton(seconds: 10, size: 112, fill: Theme.raised) { player.skip(by: 10) }
-                        SkipButton(seconds: 30, size: 88, fill: Theme.raised) { player.skip(by: 30) }
+                        SkipButton(seconds: 10, size: 112, fill: Theme.raised) {
+                            player.skip(by: 10)
+                        }
+                        SkipButton(seconds: 30, size: 88, fill: Theme.raised) {
+                            player.skip(by: 30)
+                        }
                     }
 
                     Spacer(minLength: 24)
@@ -415,8 +435,11 @@ private struct RemoteLayout: View {
                     HStack(spacing: 12) {
                         SpeedMenu(player: player)
                         if player.hasSubtitles {
-                            Button(player.subtitlesOn ? "Subtitles on" : "Subtitles") { player.toggleSubtitles() }
-                                .buttonStyle(PillButtonStyle(kind: player.subtitlesOn ? .outline : .secondary))
+                            Button(player.subtitlesOn ? "Subtitles on" : "Subtitles") {
+                                player.toggleSubtitles()
+                            }
+                            .buttonStyle(
+                                PillButtonStyle(kind: player.subtitlesOn ? .outline : .secondary))
                         }
                         Spacer()
                         Button("Watch on the iPad instead") { AirPlayPicker.shared.present() }
@@ -446,7 +469,10 @@ private struct RemoteLayout: View {
                                     } label: {
                                         HStack(spacing: 14) {
                                             Text(Timecode.string(mark.time))
-                                                .font(.system(size: 18, weight: .bold).monospacedDigit())
+                                                .font(
+                                                    .system(size: 18, weight: .bold)
+                                                        .monospacedDigit()
+                                                )
                                                 .foregroundStyle(Theme.accent)
                                                 .frame(width: 64, alignment: .leading)
                                             Text(mark.note.isEmpty ? "Bookmark" : mark.note)
@@ -470,19 +496,26 @@ private struct RemoteLayout: View {
                                     .buttonStyle(.plain)
                                     .accessibilityLabel("Edit note")
                                 }
-                                .overlay(alignment: .top) { Theme.line.opacity(0.6).frame(height: 1) }
+                                .overlay(alignment: .top) {
+                                    Theme.line.opacity(0.6).frame(height: 1)
+                                }
                             }
                         }
                     }
 
-                    Text(marks.isEmpty ? "Bookmarks you add appear here." : "Tap a bookmark to jump there on the TV.")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Theme.secondary)
+                    Text(
+                        marks.isEmpty
+                            ? "Bookmarks you add appear here."
+                            : "Tap a bookmark to jump there on the TV."
+                    )
+                    .font(.system(size: 15))
+                    .foregroundStyle(Theme.secondary)
                 }
                 .padding(20)
                 .frame(width: 340)
                 .frame(maxHeight: .infinity, alignment: .top)
-                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .background(
+                    Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
         }
         .padding(.horizontal, Theme.gutter)
@@ -517,9 +550,12 @@ struct MiniPlayer: View {
                                     .foregroundStyle(Theme.text)
                                     .lineLimit(1)
                                 if player.isExternal {
-                                    Label("Playing on \(player.routeName ?? "the TV")", systemImage: "tv")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(Theme.accent)
+                                    Label(
+                                        "Playing on \(player.routeName ?? "the TV")",
+                                        systemImage: "tv"
+                                    )
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(Theme.accent)
                                 } else {
                                     Text(playing.video.tutor)
                                         .font(.system(size: 14))
@@ -533,9 +569,11 @@ struct MiniPlayer: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Open player for \(playing.video.displayTitle)")
 
-                    Text("\(Timecode.string(player.currentTime)) / \(Timecode.string(player.duration))")
-                        .font(.system(size: 15).monospacedDigit())
-                        .foregroundStyle(Theme.secondary)
+                    Text(
+                        "\(Timecode.string(player.currentTime)) / \(Timecode.string(player.duration))"
+                    )
+                    .font(.system(size: 15).monospacedDigit())
+                    .foregroundStyle(Theme.secondary)
                     SkipButton(seconds: -10, size: 52, fill: Theme.line) { player.skip(by: -10) }
                     PlayPauseButton(player: player, size: 56)
                     Button {
@@ -543,7 +581,9 @@ struct MiniPlayer: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .buttonStyle(CircleButtonStyle(size: 48, fill: Color.clear, foreground: Theme.secondary))
+                    .buttonStyle(
+                        CircleButtonStyle(size: 48, fill: Color.clear, foreground: Theme.secondary)
+                    )
                     .accessibilityLabel("Stop")
                 }
                 .padding(.leading, Theme.gutter)

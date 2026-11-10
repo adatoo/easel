@@ -103,9 +103,11 @@ struct AccountSheet: View {
 
             Spacer(minLength: 0)
 
-            Text("Easel plays the videos in your own Raw Umber subscription. Signing in happens on Raw Umber's own page, shown inside Easel. Sign in with your email and password: Google sign-in doesn't work inside apps.")
-                .font(.system(size: 15))
-                .foregroundStyle(Theme.secondary)
+            Text(
+                "Easel plays the videos in your own Raw Umber subscription. Signing in happens on Raw Umber's own page, shown inside Easel. Sign in with your email and password: Google sign-in doesn't work inside apps."
+            )
+            .font(.system(size: 15))
+            .foregroundStyle(Theme.secondary)
         }
         .foregroundStyle(Theme.text)
         .font(.system(size: 18, weight: .medium))
@@ -113,7 +115,9 @@ struct AccountSheet: View {
         .background(Theme.surface)
         .presentationDetents([.large])
         .preferredColorScheme(.dark)
-        .confirmationDialog("Sign out of Raw Umber?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+        .confirmationDialog(
+            "Sign out of Raw Umber?", isPresented: $confirmSignOut, titleVisibility: .visible
+        ) {
             Button("Sign out", role: .destructive) {
                 Task {
                     await app.signOut()
@@ -136,14 +140,17 @@ struct AccountSheet: View {
     private var downloadsSummary: String {
         let count = app.downloads.downloads.count
         guard count > 0 else { return "None" }
-        return "\(count == 1 ? "1 video" : "\(count) videos") · \(ByteText.string(app.downloads.totalBytes))"
+        return
+            "\(count == 1 ? "1 video" : "\(count) videos") · \(ByteText.string(app.downloads.totalBytes))"
     }
 
     private var divider: some View {
         Theme.line.opacity(0.6).frame(height: 1)
     }
 
-    private func row<Content: View>(height: CGFloat = 68, @ViewBuilder content: () -> Content) -> some View {
+    private func row<Content: View>(height: CGFloat = 68, @ViewBuilder content: () -> Content)
+        -> some View
+    {
         HStack(spacing: 12) {
             content()
         }
@@ -251,7 +258,8 @@ final class WebsitePage: NSObject, WKUIDelegate, WKNavigationDelegate, WKScriptM
         let content = webView.configuration.userContentController
         content.add(WeakScriptMessageHandler(self), name: "easelSheet")
         content.addUserScript(
-            WKUserScript(source: SiteScripts.website, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+            WKUserScript(
+                source: SiteScripts.website, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         )
         observations = [
             webView.observe(\.canGoBack, options: [.initial, .new]) { [weak self] view, _ in
@@ -273,8 +281,9 @@ final class WebsitePage: NSObject, WKUIDelegate, WKNavigationDelegate, WKScriptM
         guard webView.url == nil else { return }
         allowedSlug = RawUmber.videoSlug(from: url)
         if let allowedSlug,
-           let data = try? JSONSerialization.data(withJSONObject: [allowedSlug]),
-           let json = String(data: data, encoding: .utf8) {
+            let data = try? JSONSerialization.data(withJSONObject: [allowedSlug]),
+            let json = String(data: data, encoding: .utf8)
+        {
             webView.configuration.userContentController.addUserScript(
                 WKUserScript(
                     source: "window.__easelAllowedSlug = \(json)[0];",
@@ -292,19 +301,22 @@ final class WebsitePage: NSObject, WKUIDelegate, WKNavigationDelegate, WKScriptM
         decidePolicyFor navigationAction: WKNavigationAction
     ) async -> WKNavigationActionPolicy {
         if navigationAction.targetFrame?.isMainFrame != false,
-           let url = navigationAction.request.url,
-           let slug = RawUmber.videoSlug(from: url),
-           slug != allowedSlug {
+            let url = navigationAction.request.url,
+            let slug = RawUmber.videoSlug(from: url),
+            slug != allowedSlug
+        {
             onOpenVideo?(slug, "")
             return .cancel
         }
         return .allow
     }
 
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+    func userContentController(
+        _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
+    ) {
         guard let body = message.body as? [String: Any],
-              (body["type"] as? String) == "openVideo",
-              let slug = body["slug"] as? String, !slug.isEmpty
+            (body["type"] as? String) == "openVideo",
+            let slug = body["slug"] as? String, !slug.isEmpty
         else { return }
         onOpenVideo?(slug, (body["title"] as? String) ?? "")
     }
