@@ -1,0 +1,77 @@
+name: ci
+
+# Branch protection requires only `CI Gate`. Every job runs a `task`, so CI and
+# `task ci` can't drift apart. The version and issue checks are
+# the engineering-standards reusable workflows, pinned to a release tag.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install the pinned tools
+        run: scripts/install-ci-tools.sh
+      - name: task ci:lint
+        run: task ci:lint
+
+  apple:
+    name: apple
+    runs-on: ${{ vars.MAC_RUNNER || 'macos-14' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install Task and XcodeGen if missing
+        run: |
+          command -v task >/dev/null || brew install go-task
+          command -v xcodegen >/dev/null || brew install xcodegen
+      - name: task ci:apple
+        run: task ci:apple
+
+  version-bump:
+    uses: adatoo/engineering-standards/.github/workflows/version-bump.yml@v0.6.1
+    with:
+      version-file: VERSION
+      runner: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
+
+  issue-link:
+    uses: adatoo/engineering-standards/.github/workflows/issue-link.yml@v0.6.1
+    with:
+      runner: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
+
+  # The single required check. `always()` makes it run when a dependency
+  # fails or is skipped, and it passes only if every one succeeded: a skipped
+  # required check would otherwise count as a pass.
+  ci-gate:
+    name: CI Gate
+    needs: [lint, apple, version-bump, issue-link]
+    if: ${{ always() }}
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
+    permissions: {}
+    steps:
+      - name: Require every job to have succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | python3 -c '
+          import json, sys
+          failed = {k: v["result"] for k, v in json.load(sys.stdin).items() if v["result"] != "success"}
+          for job, result in failed.items():
+              print(f"::error::{job} did not pass (result={result})")
+          sys.exit(1 if failed else 0)'
