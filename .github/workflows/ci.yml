@@ -1,8 +1,9 @@
 name: ci
 
 # Branch protection requires only `CI Gate`. Every job runs a `task`, so CI and
-# `task ci` can't drift apart. The version and issue checks are
-# the engineering-standards reusable workflows, pinned to a release tag.
+# `task ci` can't drift apart. The version and issue checks are the
+# engineering-standards workflows, vendored at v0.6.1. Every job runs on
+# GitHub-hosted runners: the repo is public (ADR-0005).
 
 on:
   pull_request:
@@ -32,7 +33,7 @@ jobs:
 
   apple:
     name: apple
-    runs-on: ${{ vars.MAC_RUNNER || 'macos-14' }}
+    runs-on: ${{ vars.MAC_RUNNER || 'macos-26' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,13 +46,13 @@ jobs:
         run: task ci:apple
 
   version-bump:
-    uses: adatoo/engineering-standards/.github/workflows/version-bump.yml@v0.6.1
+    uses: ./.github/workflows/version-bump.yml
     with:
       version-file: VERSION
       runner: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
 
   issue-link:
-    uses: adatoo/engineering-standards/.github/workflows/issue-link.yml@v0.6.1
+    uses: ./.github/workflows/issue-link.yml
     with:
       runner: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
 

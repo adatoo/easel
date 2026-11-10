@@ -26,7 +26,7 @@ downloads) on the iPad. `AGENTS.md` lists where each part lives.
 - `project.yml` is the XcodeGen spec; the Xcode project is generated and not committed
   ([ADR-0001](adr/0001-xcodegen-and-version.md)). `VERSION` is the single version source.
 - `Taskfile.yml` is the only command surface, locally and in CI.
-- CI (`.github/workflows/ci.yml`) lints on the Mac mini's Linux runner and formats, builds and
-  tests on its macOS runner, then the `CI Gate` passes or fails the PR.
+- CI (`.github/workflows/ci.yml`) lints on hosted Linux and formats, builds and tests on hosted
+  macOS, then the `CI Gate` passes or fails the PR ([ADR-0005](adr/0005-public-repo-ci.md)).
 - Each merge is tagged from `VERSION`, and the tag uploads a build to TestFlight
   ([ADR-0003](adr/0003-testflight-from-ci.md)).
