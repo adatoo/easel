@@ -3,16 +3,29 @@
 #   task            list the tasks
 #   task open       generate the Xcode project and open it
 #   task build      build for the iOS Simulator (unsigned) into ./DerivedData
+#   task release    archive and upload a build to TestFlight
 version: '3'
 
 set: [errexit, nounset, pipefail]
 silent: true
+
+# Local settings, never committed: the App Store Connect API key (ASC_KEY_PATH, ASC_KEY_ID,
+# ASC_ISSUER_ID) for `task release*` and `task testflight:*`.
+dotenv: ['.env.local']
 
 vars:
   DERIVED_DATA: '{{.ROOT_DIR}}/DerivedData'
   SCHEME: Easel
   PRETTY:
     sh: 'command -v xcbeautify >/dev/null 2>&1 && echo "xcbeautify --quiet" || echo cat'
+  APP_VERSION:
+    sh: grep -E '^ *MARKETING_VERSION:' project.yml | head -1 | sed -E 's/.*"(.*)".*/\1/'
+  # The App Store Connect API key, when set.
+  AUTH_FLAGS:
+    sh: |
+      if [ -n "${ASC_KEY_PATH:-}" ] && [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ]; then
+        echo "-authenticationKeyPath $ASC_KEY_PATH -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+      fi
 
 env:
   # xcode-select often points at the Command Line Tools, which can't run xcodebuild.
@@ -52,3 +65,70 @@ tasks:
         -derivedDataPath "{{.DERIVED_DATA}}"
         -destination 'generic/platform=iOS Simulator'
         CODE_SIGNING_ALLOWED=NO | {{.PRETTY}}
+
+  release:archive:
+    desc: Archive a signed Release build into ./build (BUILD_NUMBER defaults to a timestamp)
+    deps: [generate]
+    vars:
+      BUILD_NUMBER: '{{.BUILD_NUMBER | default (now | date "200601021504")}}'
+    cmds:
+      - mkdir -p build
+      - >-
+        xcodebuild -scheme {{.SCHEME}} -configuration Release archive
+        -destination 'generic/platform=iOS'
+        -archivePath build/Easel.xcarchive
+        -allowProvisioningUpdates {{.AUTH_FLAGS}}
+        CURRENT_PROJECT_VERSION={{.BUILD_NUMBER}}
+        | {{.PRETTY}}
+      - echo "Archived build {{.BUILD_NUMBER}} of {{.APP_VERSION}}."
+
+  release:upload:
+    desc: Export the archive and upload it to App Store Connect
+    cmds:
+      - >-
+        xcodebuild -exportArchive
+        -archivePath build/Easel.xcarchive
+        -exportOptionsPlist Config/ExportOptions.plist
+        -exportPath build/export
+        -allowProvisioningUpdates {{.AUTH_FLAGS}}
+        | {{.PRETTY}}
+      - echo "Uploaded. It shows in TestFlight once Apple has processed it (usually 5-15 minutes)."
+
+  release:
+    desc: Archive and upload a build to TestFlight
+    vars:
+      BUILD_NUMBER: '{{.BUILD_NUMBER | default (now | date "200601021504")}}'
+    cmds:
+      - task: release:archive
+        vars: {BUILD_NUMBER: '{{.BUILD_NUMBER}}'}
+      - task: release:upload
+
+  testflight:invite:
+    desc: Invite EMAIL (with FIRST and LAST names) to the App Store Connect team, Easel only
+    requires:
+      vars: [EMAIL, FIRST, LAST]
+    cmds:
+      - swift scripts/app-store-connect.swift invite "{{.EMAIL}}" "{{.FIRST}}" "{{.LAST}}"
+
+  testflight:setup:
+    desc: Create the internal TestFlight group that gets every build, and add EMAIL to it
+    requires:
+      vars: [EMAIL]
+    vars:
+      GROUP: '{{.GROUP | default "Family"}}'
+    cmds:
+      - swift scripts/app-store-connect.swift setup "{{.GROUP}}" "{{.EMAIL}}"
+
+  testflight:notes:
+    desc: Wait for build BUILD_NUMBER to process, then set its What to Test from CHANGELOG.md
+    requires:
+      vars: [BUILD_NUMBER]
+    vars:
+      VERSION: '{{.VERSION | default .APP_VERSION}}'
+    cmds:
+      - swift scripts/app-store-connect.swift notes "{{.VERSION}}" "{{.BUILD_NUMBER}}" CHANGELOG.md
+
+  testflight:status:
+    desc: List the latest builds and whether they're ready to test
+    cmds:
+      - swift scripts/app-store-connect.swift status

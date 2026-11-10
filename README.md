@@ -51,8 +51,22 @@ task build   # build for the iOS Simulator (unsigned)
 
 To put it on her iPad, connect it once by cable, turn on **Settings ▸ Privacy & Security ▸
 Developer Mode**, then choose the iPad in Xcode and Run. After the first time, Xcode can install
-over Wi-Fi. A development-signed install lasts about a year. Later, move to TestFlight as an
-internal tester to avoid needing the iPad at hand.
+over Wi-Fi.
+
+## Releasing to TestFlight
+
+The App Store Connect API key goes in `.env.local` (never committed), as in Silicon Wallet:
+`ASC_KEY_PATH`, `ASC_KEY_ID`, `ASC_ISSUER_ID`.
+
+```sh
+task release                      # archive and upload a build (build number = timestamp)
+task testflight:status            # is it processed yet?
+task testflight:invite EMAIL=… FIRST=… LAST=…   # add someone to the team (Customer Support, Easel only)
+task testflight:setup EMAIL=…     # once they've accepted: add them to the "Family" TestFlight group
+```
+
+The group gets every build automatically. TestFlight builds expire after 90 days, so upload a
+fresh one at least every couple of months.
 
 ## Known gaps
 
