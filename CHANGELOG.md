@@ -5,6 +5,12 @@ All notable changes to Easel are documented here. The format is based on
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). TestFlight's What to Test for each
 version comes from its section (`task testflight:notes`).
 
+## [0.1.3] - 2026-11-10
+
+### Changed
+
+- A fresh build reaches TestFlight on the 1st of every month, so Easel never expires, even when nothing has changed.
+
 ## [0.1.2] - 2026-11-10
 
 ### Changed
