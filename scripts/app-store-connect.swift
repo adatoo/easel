@@ -33,13 +33,20 @@ func environment(_ name: String) throws -> String {
 // MARK: - The API
 
 struct Client {
-    let token: String
+    let keyID: String
+    let issuer: String
+    let signer: P256.Signing.PrivateKey
 
     init() throws {
-        let keyID = try environment("ASC_KEY_ID")
-        let issuer = try environment("ASC_ISSUER_ID")
+        keyID = try environment("ASC_KEY_ID")
+        issuer = try environment("ASC_ISSUER_ID")
         let pem = try String(contentsOfFile: try environment("ASC_KEY_PATH"), encoding: .utf8)
-        let key = try P256.Signing.PrivateKey(pemRepresentation: pem)
+        signer = try P256.Signing.PrivateKey(pemRepresentation: pem)
+    }
+
+    /// A fresh token for each request: one lasts 15 minutes, and waiting for Apple to process a
+    /// build can take longer (#8).
+    func token() throws -> String {
         func base64URL(_ data: Data) -> String {
             data.base64EncodedString().replacingOccurrences(of: "+", with: "-")
                 .replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
@@ -49,8 +56,8 @@ struct Client {
         let claims = try JSONSerialization.data(
             withJSONObject: ["iss": issuer, "iat": now, "exp": now + 15 * 60, "aud": "appstoreconnect-v1"])
         let signingInput = base64URL(header) + "." + base64URL(claims)
-        let signature = try key.signature(for: Data(signingInput.utf8)).rawRepresentation
-        token = signingInput + "." + base64URL(signature)
+        let signature = try signer.signature(for: Data(signingInput.utf8)).rawRepresentation
+        return signingInput + "." + base64URL(signature)
     }
 
     /// Sends a request and returns the decoded JSON, or nil for an empty response.
@@ -64,7 +71,7 @@ struct Client {
         }
         var request = URLRequest(url: components.url!)
         request.httpMethod = method
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(try token())", forHTTPHeaderField: "Authorization")
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
