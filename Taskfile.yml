@@ -1,31 +1,33 @@
-# Easel's commands.
-#
-#   task            list the tasks
-#   task open       generate the Xcode project and open it
-#   task build      build for the iOS Simulator (unsigned) into ./DerivedData
-#   task release    archive and upload a build to TestFlight
+# Easel's commands: the only command surface for local work and CI (AGENTS.md).
+# Each `desc:` stays on one line with no colon followed by two spaces; longer
+# prose goes in `summary:` (checked by `task lint`). `task` lists them.
 version: '3'
 
 set: [errexit, nounset, pipefail]
 silent: true
 
 # Local settings, never committed: the App Store Connect API key (ASC_KEY_PATH, ASC_KEY_ID,
-# ASC_ISSUER_ID) for `task release*` and `task testflight:*`.
+# ASC_ISSUER_ID) for `task release*` and `task testflight:*`. CI sets them itself.
 dotenv: ['.env.local']
 
 vars:
-  DERIVED_DATA: '{{.ROOT_DIR}}/DerivedData'
+  PROJECT: Easel.xcodeproj
   SCHEME: Easel
+  DERIVED_DATA: build/DerivedData
+  SWIFT_PATHS: App
   PRETTY:
     sh: 'command -v xcbeautify >/dev/null 2>&1 && echo "xcbeautify --quiet" || echo cat'
+  # The single version source (ADR-0001).
   APP_VERSION:
-    sh: grep -E '^ *MARKETING_VERSION:' project.yml | head -1 | sed -E 's/.*"(.*)".*/\1/'
-  # The App Store Connect API key, when set.
-  AUTH_FLAGS:
-    sh: |
-      if [ -n "${ASC_KEY_PATH:-}" ] && [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ]; then
-        echo "-authenticationKeyPath $ASC_KEY_PATH -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
-      fi
+    sh: cat VERSION
+  # The default build number, so it always goes up.
+  COMMIT_COUNT:
+    sh: git rev-list --count HEAD
+  # The App Store Connect API key's flags, when ASC_KEY_PATH is set. Expanded by the shell
+  # when the command runs, so the .env.local values are always seen.
+  AUTH_FLAGS: >-
+    $([ -z "${ASC_KEY_PATH:-}" ] || echo -authenticationKeyPath "$ASC_KEY_PATH"
+    -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
 
 env:
   # xcode-select often points at the Command Line Tools, which can't run xcodebuild.
@@ -45,36 +47,112 @@ tasks:
     cmds:
       - task --list
 
+  setup:
+    desc: Install the git hooks (run once per clone)
+    cmds:
+      - lefthook install
+
   generate:
     desc: Regenerate Easel.xcodeproj from project.yml
+    summary: |
+      XcodeGen writes the project (ADR-0001); it is not committed. The app's
+      MARKETING_VERSION comes from VERSION.
     cmds:
-      - xcodegen generate --quiet
+      - MARKETING_VERSION="{{.APP_VERSION}}" xcodegen generate --quiet
 
-  open:
-    desc: Generate the project and open it in Xcode
+  dev:
+    desc: Generate the project and open it in Xcode, to run on the iPad or a simulator
     deps: [generate]
     cmds:
-      - open Easel.xcodeproj
+      - open {{.PROJECT}}
+
+  open:
+    desc: Same as dev
+    cmds:
+      - task: dev
 
   build:
-    desc: Build for the iOS Simulator into ./DerivedData (unsigned)
+    desc: Build for the iOS Simulator into build/DerivedData (unsigned)
     deps: [generate]
     cmds:
       - >-
-        xcodebuild -scheme {{.SCHEME}} -configuration Debug build
-        -derivedDataPath "{{.DERIVED_DATA}}"
+        xcodebuild -project {{.PROJECT}} -scheme {{.SCHEME}} -configuration Debug build
+        -derivedDataPath {{.DERIVED_DATA}}
         -destination 'generic/platform=iOS Simulator'
         CODE_SIGNING_ALLOWED=NO | {{.PRETTY}}
 
-  release:archive:
-    desc: Archive a signed Release build into ./build (BUILD_NUMBER defaults to a timestamp)
+  test:
+    desc: Run the unit tests on an iPad simulator
+    summary: |
+      Uses SIMULATOR, a simulator's UDID, or else an available iPad on the
+      newest iOS installed (scripts/test-simulator.sh).
     deps: [generate]
     vars:
-      BUILD_NUMBER: '{{.BUILD_NUMBER | default (now | date "200601021504")}}'
+      SIMULATOR:
+        sh: echo "${SIMULATOR:-$(scripts/test-simulator.sh)}"
+    cmds:
+      - >-
+        xcodebuild -project {{.PROJECT}} -scheme {{.SCHEME}} test
+        -derivedDataPath {{.DERIVED_DATA}}
+        -destination 'platform=iOS Simulator,id={{.SIMULATOR}}'
+        CODE_SIGNING_ALLOWED=NO | {{.PRETTY}}
+
+  fmt:
+    desc: Format the Swift code with swift-format
+    cmds:
+      - swift format --in-place --recursive {{.SWIFT_PATHS}}
+
+  fmt:check:
+    desc: Check the Swift code's formatting and swift-format lint rules
+    cmds:
+      - swift format lint --strict --recursive {{.SWIFT_PATHS}}
+
+  lint:
+    desc: Lint the workflows, shell scripts and Taskfile
+    cmds:
+      - actionlint
+      - shellcheck scripts/*.sh
+      - python3 scripts/check-task-desc.py
+
+  secrets:
+    desc: Scan the whole history for committed secrets
+    cmds:
+      - gitleaks git --no-banner --redact .
+
+  clean:
+    desc: Remove the generated project and build products
+    cmds:
+      - rm -rf {{.PROJECT}} build DerivedData
+
+  ci:lint:
+    desc: The CI lint job (Linux)
+    cmds:
+      - task: lint
+      - task: secrets
+
+  ci:apple:
+    desc: The CI Apple job (macOS)
+    cmds:
+      - task: fmt:check
+      - task: build
+      - task: test
+
+  ci:
+    desc: Full local CI parity; run before pushing
+    cmds:
+      - task: ci:lint
+      - task: ci:apple
+
+  release:archive:
+    desc: Archive a signed Release build into ./build (BUILD_NUMBER defaults to the commit count)
+    deps: [generate]
+    vars:
+      BUILD_NUMBER: '{{.BUILD_NUMBER | default .COMMIT_COUNT}}'
     cmds:
       - mkdir -p build
+      - rm -rf build/Easel.xcarchive build/export
       - >-
-        xcodebuild -scheme {{.SCHEME}} -configuration Release archive
+        xcodebuild -project {{.PROJECT}} -scheme {{.SCHEME}} -configuration Release archive
         -destination 'generic/platform=iOS'
         -archivePath build/Easel.xcarchive
         -allowProvisioningUpdates {{.AUTH_FLAGS}}
@@ -96,12 +174,26 @@ tasks:
 
   release:
     desc: Archive and upload a build to TestFlight
+    summary: |
+      Run by the testflight workflow for every version tag (ADR-0003), or by
+      hand. The build number is the commit count, so it always goes up;
+      BUILD_NUMBER overrides it.
     vars:
-      BUILD_NUMBER: '{{.BUILD_NUMBER | default (now | date "200601021504")}}'
+      BUILD_NUMBER: '{{.BUILD_NUMBER | default .COMMIT_COUNT}}'
     cmds:
       - task: release:archive
         vars: {BUILD_NUMBER: '{{.BUILD_NUMBER}}'}
       - task: release:upload
+
+  release:prune-certificates:
+    desc: Revoke the development certificates that CI's automatic signing created via the API key
+    summary: |
+      Archiving on the CI runner makes an "Apple Development: Created via API"
+      certificate, and Apple refuses new ones once the team reaches its limit.
+      The testflight workflow runs this after every run, pass or fail.
+      Certificates made in Xcode or on the website are left alone.
+    cmds:
+      - swift scripts/app-store-connect.swift prune-certificates
 
   testflight:invite:
     desc: Invite EMAIL (with FIRST and LAST names) to the App Store Connect team, Easel only

@@ -1,5 +1,6 @@
-# Easel's Xcode project. Edit this file, not Easel.xcodeproj: `task generate` rewrites
-# the project from it, and the project is not committed.
+# Easel's Xcode project (ADR-0001). Edit this file, not Easel.xcodeproj: `task generate`
+# rewrites the project from it, and the project is not committed. MARKETING_VERSION comes
+# from VERSION through the environment.
 name: Easel
 
 options:
@@ -11,7 +12,7 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: ${MARKETING_VERSION}
     CURRENT_PROJECT_VERSION: "1"
     # Swift 5 mode for now; tighten to 6 / complete once the app has settled (see AGENTS.md).
     SWIFT_VERSION: "5.0"
