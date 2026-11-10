@@ -27,46 +27,45 @@ behind the scenes, and opened in a sheet only for signing in, live sessions and 
 
 ## How it works
 
-- **SiteAPI** (`App/Site/SiteAPI.swift`): a web view parked out of sight on a site page runs the
-  same JSON requests the site's own pages make (`/n/_next/data/...` and `/x/videosearch`), so
-  everything carries her sign-in exactly as the site does. The scripts are in
-  `App/Site/SiteScripts.swift`.
-- **StreamResolver**: to play or download, a second hidden web view loads the video's (or its
-  series') page and reports the stream the site's JW Player was given
-  (`vod.rawumberstudios.com/<id>/master.m3u8`, HLS, no DRM). Easel never builds stream URLs itself.
-- **Player**: `AVPlayer` with external playback on, so AirPlay sends the stream itself to the
-  Apple TV. It belongs to `AppModel`, so playback survives moving around the app.
-- **Downloads**: `AVAssetDownloadURLSession` (background) saves the HLS stream as a `.movpkg`;
-  an index is kept in Application Support/downloads.json.
-- **Storage**: SwiftData (`Video`, `Bookmark`). CloudKit-compatible models; sync is off.
+See [docs/architecture.md](docs/architecture.md), and [docs/adr/](docs/adr/README.md) for the
+decisions behind it.
 
 ## Building
 
-Needs Xcode, [XcodeGen](https://github.com/yonaskolb/XcodeGen) and [Task](https://taskfile.dev).
+Needs Xcode, [XcodeGen](https://github.com/yonaskolb/XcodeGen), [Task](https://taskfile.dev)
+and, for the hooks and lint, lefthook, swift-format (with Xcode), actionlint, shellcheck and
+gitleaks.
 
 ```sh
-task open    # generate Easel.xcodeproj from project.yml and open it
+task setup   # once per clone: install the git hooks
+task dev     # generate Easel.xcodeproj from project.yml and open it
 task build   # build for the iOS Simulator (unsigned)
+task test    # run the unit tests on an iPad simulator
+task ci      # everything CI runs; run it before pushing
 ```
 
-To put it on her iPad, connect it once by cable, turn on **Settings ▸ Privacy & Security ▸
-Developer Mode**, then choose the iPad in Xcode and Run. After the first time, Xcode can install
-over Wi-Fi.
+To put a development build on her iPad, connect it once by cable, turn on **Settings ▸ Privacy &
+Security ▸ Developer Mode**, then choose the iPad in Xcode and Run.
 
 ## Releasing to TestFlight
 
-The App Store Connect API key goes in `.env.local` (never committed), as in Silicon Wallet:
-`ASC_KEY_PATH`, `ASC_KEY_ID`, `ASC_ISSUER_ID`.
+Every merge to `main` is tagged `vX.Y.Z` from `VERSION`, and the tag's `testflight` workflow
+archives and uploads that build on the Mac mini ([ADR-0003](docs/adr/0003-testflight-from-ci.md)).
+Its What to Test comes from the version's `CHANGELOG.md` section. The internal **Family**
+TestFlight group gets every build, so she only has to update in the TestFlight app.
+
+By hand, with the App Store Connect API key in `.env.local` (never committed): `ASC_KEY_PATH`,
+`ASC_KEY_ID`, `ASC_ISSUER_ID`.
 
 ```sh
-task release                      # archive and upload a build (build number = timestamp)
+task release                      # archive and upload a build (build number = commit count)
 task testflight:status            # is it processed yet?
 task testflight:invite EMAIL=… FIRST=… LAST=…   # add someone to the team (Customer Support, Easel only)
 task testflight:setup EMAIL=…     # once they've accepted: add them to the "Family" TestFlight group
 ```
 
-The group gets every build automatically. TestFlight builds expire after 90 days, so upload a
-fresh one at least every couple of months.
+TestFlight builds expire after 90 days, so if nothing has merged for a couple of months, re-run
+the latest `testflight` workflow (Actions ▸ testflight ▸ Run workflow).
 
 ## Known gaps
 

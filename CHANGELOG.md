@@ -1,8 +1,13 @@
 # Changelog
 
-TestFlight's "What to Test" for each version comes from its section here (`task testflight:notes`).
+All notable changes to Easel are documented here. The format is based on
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html). TestFlight's What to Test for each
+version comes from its section (`task testflight:notes`).
 
-## [0.1.0]
+## [0.1.0] - 2026-11-10
+
+### Added
 
 - Home, Search and My Easel, with a page for every video and series.
 - Big player controls on the iPad; a remote with very large buttons when the video is on the TV.
