@@ -159,6 +159,7 @@ struct WebsiteSheet: View {
     let request: WebsiteRequest
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var app
     @State private var page = WebsitePage()
 
     var body: some View {
@@ -210,19 +211,28 @@ struct WebsiteSheet: View {
         }
         .background(Theme.bar.ignoresSafeArea())
         .preferredColorScheme(.dark)
-        .onAppear { page.load(request.url) }
+        .onAppear {
+            page.onOpenVideo = { slug, title in
+                app.openFromWebsite(slug: slug, title: title)
+            }
+            page.load(request.url)
+        }
     }
 }
 
 /// The web view behind WebsiteSheet, and what the sheet's toolbar needs from it.
 @MainActor
 @Observable
-final class WebsitePage: NSObject, WKUIDelegate {
+final class WebsitePage: NSObject, WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler {
     let webView: WKWebView
     private(set) var canGoBack = false
     private(set) var canGoForward = false
     private(set) var isLoading = false
     private(set) var title = ""
+    /// Called with (slug, title) when a video should open in Easel rather than on the website.
+    @ObservationIgnored var onOpenVideo: ((String, String) -> Void)?
+    /// The one video page this sheet may show (a live session, or a video she can't watch in Easel).
+    @ObservationIgnored private var allowedSlug: String?
     @ObservationIgnored private var observations: [NSKeyValueObservation] = []
 
     override init() {
@@ -232,7 +242,17 @@ final class WebsitePage: NSObject, WKUIDelegate {
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
         webView.uiDelegate = self
+        webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
+        // The site is designed light; keep it that way inside the dark app.
+        webView.overrideUserInterfaceStyle = .light
+        webView.isOpaque = true
+        webView.backgroundColor = .white
+        let content = webView.configuration.userContentController
+        content.add(WeakScriptMessageHandler(self), name: "easelSheet")
+        content.addUserScript(
+            WKUserScript(source: SiteScripts.website, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+        )
         observations = [
             webView.observe(\.canGoBack, options: [.initial, .new]) { [weak self] view, _ in
                 MainActor.assumeIsolated { self?.canGoBack = view.canGoBack }
@@ -251,7 +271,42 @@ final class WebsitePage: NSObject, WKUIDelegate {
 
     func load(_ url: URL) {
         guard webView.url == nil else { return }
+        allowedSlug = RawUmber.videoSlug(from: url)
+        if let allowedSlug,
+           let data = try? JSONSerialization.data(withJSONObject: [allowedSlug]),
+           let json = String(data: data, encoding: .utf8) {
+            webView.configuration.userContentController.addUserScript(
+                WKUserScript(
+                    source: "window.__easelAllowedSlug = \(json)[0];",
+                    injectionTime: .atDocumentStart,
+                    forMainFrameOnly: true
+                )
+            )
+        }
         webView.load(URLRequest(url: url))
+    }
+
+    /// Pages that load fully (rather than the site moving between its own pages) are checked here.
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction
+    ) async -> WKNavigationActionPolicy {
+        if navigationAction.targetFrame?.isMainFrame != false,
+           let url = navigationAction.request.url,
+           let slug = RawUmber.videoSlug(from: url),
+           slug != allowedSlug {
+            onOpenVideo?(slug, "")
+            return .cancel
+        }
+        return .allow
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard let body = message.body as? [String: Any],
+              (body["type"] as? String) == "openVideo",
+              let slug = body["slug"] as? String, !slug.isEmpty
+        else { return }
+        onOpenVideo?(slug, (body["title"] as? String) ?? "")
     }
 
     /// Links that ask for a new window open in the same view.

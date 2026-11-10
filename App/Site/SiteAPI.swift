@@ -91,7 +91,15 @@ final class SiteAPI: NSObject {
                   let string = dict["url"] as? String,
                   let url = URL(string: string)
             else { return nil }
+            // The weekly sessions all link to the same general page, not their own materials.
+            if url.path.contains("materials-for-online-sessions") {
+                return ExtraLink(title: "Lizet's usual materials (all sessions)", url: url)
+            }
             return ExtraLink(title: title, url: url)
+        }
+        page.materials = (result["materials"] as? [String]) ?? []
+        if !page.materials.isEmpty, let about = result["about"] as? String {
+            page.video.summary = about
         }
         return page
     }

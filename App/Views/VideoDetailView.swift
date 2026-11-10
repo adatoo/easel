@@ -13,6 +13,7 @@ struct VideoDetailView: View {
 
     @State private var page: VideoPage?
     @State private var failed = false
+    @State private var showsFullSummary = false
 
     private var info: VideoInfo { page?.video ?? video }
     private var parts: [VideoInfo] { page?.parts ?? [] }
@@ -22,6 +23,7 @@ struct VideoDetailView: View {
         let records = Dictionary(library.map { ($0.slug, $0) }, uniquingKeysWith: { first, _ in first })
         let marks = bookmarks(records)
         let extras = page?.extras ?? []
+        let materials = page?.materials ?? []
 
         ScrollView {
             VStack(alignment: .leading, spacing: 34) {
@@ -41,8 +43,9 @@ struct VideoDetailView: View {
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .top, spacing: 40) {
                             partsList(records).frame(minWidth: 520)
-                            if !marks.isEmpty || !extras.isEmpty {
+                            if !marks.isEmpty || !extras.isEmpty || !materials.isEmpty {
                                 VStack(spacing: 20) {
+                                    materialsCard(materials)
                                     bookmarksCard(marks)
                                     extrasCard(extras)
                                 }
@@ -52,15 +55,21 @@ struct VideoDetailView: View {
                         }
                         VStack(alignment: .leading, spacing: 24) {
                             partsList(records)
+                            materialsCard(materials)
                             bookmarksCard(marks)
                             extrasCard(extras)
                         }
                     }
                     .padding(.horizontal, Theme.gutter)
-                } else if !marks.isEmpty || !extras.isEmpty {
+                } else if !marks.isEmpty || !extras.isEmpty || !materials.isEmpty {
                     HStack(alignment: .top, spacing: 20) {
-                        bookmarksCard(marks)
-                        extrasCard(extras)
+                        materialsCard(materials)
+                        if !marks.isEmpty || !extras.isEmpty {
+                            VStack(spacing: 20) {
+                                bookmarksCard(marks)
+                                extrasCard(extras)
+                            }
+                        }
                     }
                     .padding(.horizontal, Theme.gutter)
                 }
@@ -109,7 +118,15 @@ struct VideoDetailView: View {
                         .font(.system(size: 17))
                         .foregroundStyle(Color(hex: 0xD9D3CA))
                         .lineSpacing(4)
-                        .lineLimit(5)
+                        .lineLimit(showsFullSummary ? nil : 5)
+                    if info.summary.count > 300 {
+                        Button(showsFullSummary ? "Less" : "More") {
+                            withAnimation { showsFullSummary.toggle() }
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(minHeight: 44)
+                    }
                 }
                 actions(records)
                     .padding(.top, 8)
@@ -394,6 +411,34 @@ struct VideoDetailView: View {
         }
     }
 
+    /// What she'll need, from the video's own description.
+    @ViewBuilder
+    private func materialsCard(_ materials: [String]) -> some View {
+        if !materials.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Materials", systemImage: "paintbrush.pointed.fill")
+                    .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(Theme.text)
+                    .padding(.bottom, 4)
+                ForEach(Array(materials.enumerated()), id: \.offset) { _, item in
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Circle()
+                            .fill(Theme.accent)
+                            .frame(width: 7, height: 7)
+                            .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
+                        Text(item)
+                            .font(.system(size: 17))
+                            .foregroundStyle(Theme.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
     @ViewBuilder
     private func extrasCard(_ extras: [ExtraLink]) -> some View {
         if !extras.isEmpty {
@@ -404,7 +449,10 @@ struct VideoDetailView: View {
                     .padding(.bottom, 12)
                 ForEach(extras) { link in
                     Button {
-                        if link.isFile {
+                        if let slug = RawUmber.videoSlug(from: link.url) {
+                            // Another Raw Umber video: its page in Easel, not on the website.
+                            app.open(VideoInfo(id: 0, slug: slug, title: link.title))
+                        } else if link.isFile {
                             openURL(link.url)
                         } else {
                             app.openWebsite(link.url)
@@ -416,7 +464,7 @@ struct VideoDetailView: View {
                                 .foregroundStyle(Theme.text)
                                 .multilineTextAlignment(.leading)
                             Spacer(minLength: 0)
-                            Image(systemName: "arrow.up.right")
+                            Image(systemName: RawUmber.videoSlug(from: link.url) == nil ? "arrow.up.right" : "play.rectangle")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(Theme.secondary)
                         }
@@ -426,7 +474,7 @@ struct VideoDetailView: View {
                     .buttonStyle(.plain)
                     .overlay(alignment: .top) { Theme.line.opacity(0.6).frame(height: 1) }
                 }
-                Text("These open the Raw Umber website.")
+                Text(extras.allSatisfy { RawUmber.videoSlug(from: $0.url) != nil } ? "These open in Easel." : "Pages open the Raw Umber website.")
                     .font(.system(size: 14))
                     .foregroundStyle(Theme.secondary)
                     .padding(.top, 12)

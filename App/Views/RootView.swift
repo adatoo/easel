@@ -60,6 +60,7 @@ struct RootView: View {
         }
         .fullScreenCover(item: $app.website, onDismiss: { app.websiteClosed() }) { request in
             WebsiteSheet(request: request)
+                .environment(app)
         }
         .alert(
             "That didn't work",

@@ -24,6 +24,8 @@ final class Video {
     var knownDuration: Double = 0
     var lastWatched: Date?
     var finished: Bool = false
+    /// Taken off Continue watching by hand; cleared when she plays it again.
+    var hiddenFromContinue: Bool = false
     /// The series this is a part of, when it was played from a series' page.
     var seriesSlug: String = ""
     var seriesTitle: String = ""
@@ -71,6 +73,9 @@ final class Video {
     }
 
     var isInProgress: Bool { !finished && lastPosition > 0 }
+
+    /// Whether it belongs in Continue watching.
+    var showsInContinue: Bool { isInProgress && !hiddenFromContinue }
 
     var seriesContext: SeriesContext? {
         guard !seriesSlug.isEmpty else { return nil }

@@ -14,6 +14,16 @@ enum RawUmber {
         site.appending(path: "n/videos").appending(path: slug)
     }
 
+    /// The video a link points to, for both the site's current and older addresses
+    /// (/n/videos/<slug> and /videos/<slug>/).
+    static func videoSlug(from url: URL) -> String? {
+        guard let host = url.host?.lowercased(), host.hasSuffix("rawumberstudios.com") else { return nil }
+        let parts = url.path.split(separator: "/").map(String.init)
+        if parts.count == 2, parts[0] == "videos" { return parts[1] }
+        if parts.count == 3, parts[0] == "n", parts[1] == "videos" { return parts[2] }
+        return nil
+    }
+
     /// The small picture for cards.
     static func thumbnail(_ fileName: String) -> URL? {
         guard !fileName.isEmpty else { return nil }

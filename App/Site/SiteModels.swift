@@ -151,6 +151,8 @@ struct VideoPage: Sendable {
     var trailer: VideoInfo?
     var related: [VideoInfo] = []
     var extras: [ExtraLink] = []
+    /// The video's own materials, from its description.
+    var materials: [String] = []
 }
 
 struct SearchPage: Sendable {

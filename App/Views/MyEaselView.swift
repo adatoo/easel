@@ -92,7 +92,12 @@ struct MyEaselView: View {
                 if !watched.isEmpty {
                     RowSection("Recently watched", seeAll: { app.show(.shelf(.watched)) }) {
                         ForEach(Array(watched.prefix(12))) { video in
-                            VideoCard(video.info, subtitle: watchedSubtitle(video)) {
+                            VideoCard(
+                                video.info,
+                                subtitle: watchedSubtitle(video),
+                                removeTitle: "Remove from Recently watched",
+                                onRemove: { withAnimation { VideoStore.removeFromWatched(video, in: app.context) } }
+                            ) {
                                 app.open(video.info)
                             }
                         }
@@ -152,7 +157,7 @@ struct ShelfView: View {
 
     private var videos: [Video] {
         switch shelf {
-        case .continueWatching: return watched.filter(\.isInProgress)
+        case .continueWatching: return watched.filter(\.showsInContinue)
         case .favourites: return favourites
         case .watched: return watched
         case .bookmarks, .downloads: return []
@@ -235,7 +240,13 @@ struct ShelfView: View {
         }
         VideoGrid {
             ForEach(videos) { video in
-                VideoCard(video.info, width: nil, subtitle: subtitle(video)) {
+                VideoCard(
+                    video.info,
+                    width: nil,
+                    subtitle: subtitle(video),
+                    removeTitle: removeTitle,
+                    onRemove: removeAction(for: video)
+                ) {
                     if shelf == .continueWatching {
                         app.play(video.info, series: video.seriesContext)
                     } else {
@@ -248,6 +259,20 @@ struct ShelfView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// The card's own "⋯" remove, hidden while the big Remove buttons are showing.
+    private func removeAction(for video: Video) -> (() -> Void)? {
+        if isEditing { return nil }
+        return { remove(video) }
+    }
+
+    private var removeTitle: String {
+        switch shelf {
+        case .continueWatching: return "Remove from Continue watching"
+        case .favourites: return "Remove from Favourites"
+        default: return "Remove from Recently watched"
         }
     }
 
@@ -271,8 +296,7 @@ struct ShelfView: View {
                 video.isFavourite = false
                 video.favouritedAt = nil
             case .continueWatching:
-                video.lastPosition = 0
-                video.lastWatched = nil
+                video.hiddenFromContinue = true
             default:
                 video.lastWatched = nil
             }

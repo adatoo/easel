@@ -22,6 +22,16 @@ enum VideoStore {
         return video
     }
 
+    static func removeFromContinue(_ video: Video, in context: ModelContext) {
+        video.hiddenFromContinue = true
+        try? context.save()
+    }
+
+    static func removeFromWatched(_ video: Video, in context: ModelContext) {
+        video.lastWatched = nil
+        try? context.save()
+    }
+
     static func toggleFavourite(_ info: VideoInfo, in context: ModelContext) {
         let video = upsert(info, in: context)
         video.isFavourite.toggle()

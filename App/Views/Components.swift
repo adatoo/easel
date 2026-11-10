@@ -30,16 +30,28 @@ struct VideoCard: View {
     let video: VideoInfo
     var width: CGFloat?
     var subtitle: String?
+    /// When set, the card has a "⋯" menu with this action, e.g. "Remove from Continue watching".
+    var removeTitle: String?
+    var onRemove: (() -> Void)?
     let action: () -> Void
 
     @Environment(AppModel.self) private var app
     @Environment(\.modelContext) private var context
     @Query private var stored: [Video]
 
-    init(_ video: VideoInfo, width: CGFloat? = 248, subtitle: String? = nil, action: @escaping () -> Void) {
+    init(
+        _ video: VideoInfo,
+        width: CGFloat? = 248,
+        subtitle: String? = nil,
+        removeTitle: String? = nil,
+        onRemove: (() -> Void)? = nil,
+        action: @escaping () -> Void
+    ) {
         self.video = video
         self.width = width
         self.subtitle = subtitle
+        self.removeTitle = removeTitle
+        self.onRemove = onRemove
         self.action = action
         let slug = video.slug
         _stored = Query(filter: #Predicate<Video> { $0.slug == slug })
@@ -66,6 +78,7 @@ struct VideoCard: View {
                             .foregroundStyle(Theme.secondary)
                             .lineLimit(1)
                     }
+                    .padding(.trailing, onRemove == nil ? 0 : 40)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
@@ -86,6 +99,22 @@ struct VideoCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel((record?.isFavourite ?? false) ? "Remove from favourites" : "Add to favourites")
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if let onRemove {
+                Menu {
+                    Button(role: .destructive, action: onRemove) {
+                        Label(removeTitle ?? "Remove", systemImage: "minus.circle")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(Theme.secondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("More options for \(video.displayTitle)")
+            }
         }
         .frame(width: width)
     }

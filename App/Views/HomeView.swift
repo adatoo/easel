@@ -22,7 +22,7 @@ struct HomeView: View {
     @State private var loadFailed = false
 
     var body: some View {
-        let inProgress = watched.filter(\.isInProgress)
+        let inProgress = watched.filter(\.showsInContinue)
         let upcoming = Array(latest.filter(\.isUpcoming).reversed())
         let newest = latest.filter { !$0.isUpcoming }
 
@@ -56,7 +56,12 @@ struct HomeView: View {
                 if inProgress.count > 1 {
                     RowSection("Continue watching", seeAll: { app.show(.shelf(.continueWatching)) }) {
                         ForEach(Array(inProgress.dropFirst().prefix(12))) { video in
-                            VideoCard(video.info, subtitle: continueSubtitle(video)) {
+                            VideoCard(
+                                video.info,
+                                subtitle: continueSubtitle(video),
+                                removeTitle: "Remove from Continue watching",
+                                onRemove: { withAnimation { VideoStore.removeFromContinue(video, in: app.context) } }
+                            ) {
                                 app.play(video.info, series: video.seriesContext)
                             }
                         }
@@ -185,6 +190,21 @@ private struct ResumeHero: View {
                         Button("Details") { app.open(info) }
                             .buttonStyle(PillButtonStyle(kind: .secondary, height: 64, fontSize: 19))
                     }
+                    Menu {
+                        Button(role: .destructive) {
+                            withAnimation { VideoStore.removeFromContinue(video, in: app.context) }
+                        } label: {
+                            Label("Remove from Continue watching", systemImage: "minus.circle")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(Theme.text)
+                            .frame(width: 64, height: 64)
+                            .background(Theme.raised, in: Circle())
+                            .contentShape(Circle())
+                    }
+                    .accessibilityLabel("More options")
                 }
                 .padding(.top, 10)
             }

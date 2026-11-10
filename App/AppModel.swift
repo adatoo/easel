@@ -109,6 +109,16 @@ final class AppModel {
         website = WebsiteRequest(url: url)
     }
 
+    /// A video link (or a video starting to play) in the website sheet: close the sheet and
+    /// show the video's page in Easel.
+    func openFromWebsite(slug: String, title: String) {
+        website = nil
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            show(.video(VideoInfo(id: 0, slug: slug, title: title)))
+        }
+    }
+
     /// After the website sheet closes: she may have signed in, so check and reload.
     func websiteClosed() {
         Task {
@@ -171,6 +181,7 @@ final class AppModel {
             record.partCount = series.partCount
         }
         record.lastWatched = Date.now
+        record.hiddenFromContinue = false
 
         var startAt = time ?? 0
         if time == nil, !record.finished, record.lastPosition > 15,

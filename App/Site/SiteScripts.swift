@@ -8,7 +8,8 @@ enum SiteScripts {
     ///   bootstrap()      → { loggedIn, level, subscribed, tutors: [{id, name}], playlists: [{id, slug, name, about}] }
     ///   search(json)     → { count, videos: [Video] }      `json` is the site's own search request
     ///   playlist(slug)   → { name, videos: [Video] }
-    ///   video(slug)      → { video, parts: [Video], trailer: Video|null, related: [Video], extras: [{title, url}] }
+    ///   video(slug)      → { video, materials: [String], about, parts: [Video], trailer: Video|null,
+    ///                        related: [Video], extras: [{title, url}] }
     ///
     /// Video: { id, slug, title, tutor, tutorId, thumbnail, description, dateLive, duration,
     ///          isSeries, inTheFuture, accessible, hasSubtitles }
@@ -32,6 +33,59 @@ enum SiteScripts {
           accessible: v.accessible !== false,
           hasSubtitles: !!v.hasSubtitles
         };
+      }
+
+      // The video's own materials: the list after "Materials used:" in its description.
+      function materialsOf(v) {
+        var items = [];
+        var html = v.htmlDescription || '';
+        if (html) {
+          try {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var blocks = Array.prototype.slice.call(doc.body.children);
+            for (var i = 0; i < blocks.length && !items.length; i++) {
+              if (!/^materials( used)?\s*:?$/i.test((blocks[i].textContent || '').trim())) { continue; }
+              for (var j = i + 1; j < blocks.length; j++) {
+                var tag = blocks[j].tagName;
+                if (tag === 'UL' || tag === 'OL') {
+                  items = Array.prototype.slice.call(blocks[j].querySelectorAll('li'))
+                    .map(function (li) { return (li.textContent || '').replace(/\s+/g, ' ').trim(); })
+                    .filter(Boolean);
+                  break;
+                }
+                if ((blocks[j].textContent || '').trim()) { break; }
+              }
+            }
+          } catch (e) {}
+        }
+        if (!items.length) {
+          var match = (v.description || '').match(/materials(?: used)?\s*:\s*([\s\S]+)$/i);
+          if (match) { items = splitMaterials(match[1]); }
+        }
+        return items.map(function (item) {
+          item = item.replace(/^and\s+/i, '').replace(/[.;,]+$/, '').trim();
+          return item.charAt(0).toUpperCase() + item.slice(1);
+        }).filter(function (item) { return item.length > 1; });
+      }
+
+      // "Willow charcoal. Soft pastels: a, b, c" → one item per sentence that has a colon,
+      // otherwise one per comma ("black and white pencils" stays whole).
+      function splitMaterials(text) {
+        var out = [];
+        text.replace(/\s+/g, ' ').trim().split(/\.\s+(?=[A-Z])/).forEach(function (sentence) {
+          sentence = sentence.trim();
+          if (!sentence) { return; }
+          if (sentence.indexOf(':') >= 0) { out.push(sentence); return; }
+          sentence.split(/\s*,\s*/).forEach(function (part) {
+            if (part.trim()) { out.push(part.trim()); }
+          });
+        });
+        return out;
+      }
+
+      // The description without its "Materials used" ending, which is shown as a list instead.
+      function aboutOf(v) {
+        return (v.description || '').replace(/\s*materials(?: used)?\s*:[\s\S]*$/i, '').trim();
       }
 
       function list(videos) {
@@ -107,6 +161,8 @@ enum SiteScripts {
           return JSON.stringify({
             status: 200,
             video: compact(data.video),
+            materials: materialsOf(data.video),
+            about: aboutOf(data.video),
             parts: list(data.videosInSeries),
             trailer: (data.trailer && data.trailer.slug) ? compact(data.trailer) : null,
             related: list(data.relatedVideos),
@@ -116,6 +172,77 @@ enum SiteScripts {
           });
         }
       };
+    })();
+    """#
+
+    /// For the website sheet. Links to videos, and videos starting to play, open in Easel
+    /// instead, except on the one video page the sheet was opened for (a live session, or a
+    /// video outside her subscription). `window.__easelAllowedSlug` names that page.
+    ///
+    /// Messages to `window.webkit.messageHandlers.easelSheet`:
+    ///   { type: "openVideo", slug, title }
+    static let website = #"""
+    (function () {
+      if (window.__easelSheet) { return; }
+      window.__easelSheet = true;
+
+      function post(message) {
+        try { window.webkit.messageHandlers.easelSheet.postMessage(message); } catch (e) {}
+      }
+
+      function slugOf(href) {
+        try {
+          var url = new URL(href, location.href);
+          if (!/(^|\.)rawumberstudios\.com$/.test(url.hostname)) { return null; }
+          var match = url.pathname.match(/^\/(?:n\/)?videos\/([^\/?#]+)\/?$/);
+          return match ? decodeURIComponent(match[1]) : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function allowed() { return window.__easelAllowedSlug || null; }
+
+      // The site's own page links move between pages without loading, so catch the click
+      // before the site's code sees it.
+      document.addEventListener('click', function (event) {
+        var link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+        if (!link) { return; }
+        var slug = slugOf(link.getAttribute('href'));
+        if (!slug || slug === allowed() || slug === slugOf(location.href)) { return; }
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        post({ type: 'openVideo', slug: slug, title: (link.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 140) });
+      }, true);
+
+      function slugForPlayer(id) {
+        var found = null;
+        (function walk(value, depth) {
+          if (found || !value || typeof value !== 'object' || depth > 8) { return; }
+          if (Array.isArray(value)) { value.forEach(function (item) { walk(item, depth + 1); }); return; }
+          if (value.id === id && typeof value.slug === 'string') { found = value.slug; return; }
+          Object.keys(value).forEach(function (key) { walk(value[key], depth + 1); });
+        })(window.__NEXT_DATA__, 0);
+        return found;
+      }
+
+      // A video starting to play anywhere else (the front page's featured video, say).
+      document.addEventListener('play', function (event) {
+        if (!(event.target instanceof HTMLMediaElement)) { return; }
+        var slug = slugOf(location.href);
+        if (slug && slug === allowed()) { return; }
+        if (!slug) {
+          try {
+            var container = event.target.closest('.jwplayer');
+            var match = container && container.id.match(/(\d+)$/);
+            slug = match ? slugForPlayer(Number(match[1])) : null;
+          } catch (e) {}
+        }
+        if (!slug) { return; }
+        try { event.target.pause(); } catch (e) {}
+        post({ type: 'openVideo', slug: slug, title: '' });
+      }, true);
     })();
     """#
 
