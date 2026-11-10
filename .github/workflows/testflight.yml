@@ -3,7 +3,9 @@ name: testflight
 # Uploads each release to TestFlight (ADR-0003). tag.yml tags every merge
 # through the adatoo-automation App, so the tag starts this workflow. It isn't
 # part of the CI Gate, so a failed upload never blocks a merge; re-run it by
-# hand (workflow_dispatch) once the cause is fixed. It runs on GitHub's hosted
+# hand (workflow_dispatch) once the cause is fixed. It also runs monthly, so
+# the newest build is never near TestFlight's 90-day expiry even when nothing
+# has merged (#6). It runs on GitHub's hosted
 # macOS (ADR-0005), and needs the Actions secrets ASC_KEY_ID, ASC_ISSUER_ID and
 # ASC_KEY_P8 (the .p8 file's contents). Signing is automatic through the API
 # key, as in Silicon Wallet.
@@ -12,9 +14,14 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+  schedule:
+    # 06:00 UTC on the 1st of each month: a fresh build of main.
+    - cron: '0 6 1 * *'
 
 permissions:
   contents: read
+  # Re-enabling its own schedule (see the last step).
+  actions: write
 
 concurrency:
   group: testflight
@@ -53,7 +60,13 @@ jobs:
         env:
           ASC_KEY_PATH: ${{ runner.temp }}/asc-key.p8
         run: |
+          # A tag's build is the commit count. A scheduled or manual run may
+          # rebuild a commit already uploaded, so it adds the run number:
+          # 23.41 is new, and later than 23, for the same version (#6).
           build_number="$(git rev-list --count HEAD)"
+          if [ "$GITHUB_EVENT_NAME" != push ]; then
+            build_number="$build_number.$GITHUB_RUN_NUMBER"
+          fi
           echo "build-number=$build_number" >> "$GITHUB_OUTPUT"
           task release BUILD_NUMBER="$build_number"
       # What to Test is a nicety: the build is already up, so a failure only warns.
@@ -77,3 +90,13 @@ jobs:
       - name: Remove the API key
         if: always()
         run: rm -f "$RUNNER_TEMP/asc-key.p8"
+      # GitHub turns off a public repo's scheduled workflows after 60 days
+      # without activity; enabling this one again each run keeps the monthly
+      # refresh going through a quiet spell (#6).
+      - name: Keep the monthly schedule enabled
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/testflight.yml/enable" \
+            || echo "::warning::Couldn't re-enable the monthly schedule."

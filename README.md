@@ -76,8 +76,9 @@ task testflight:invite EMAIL=… FIRST=… LAST=…   # add someone to the team 
 task testflight:setup EMAIL=…     # once they've accepted: add them to the "Family" TestFlight group
 ```
 
-TestFlight builds expire after 90 days, so if nothing has merged for a couple of months, re-run
-the latest `testflight` workflow (Actions ▸ testflight ▸ Run workflow).
+TestFlight builds expire after 90 days, so the workflow also uploads a fresh build of `main` on
+the 1st of every month; nobody has to remember. To refresh sooner, run it by hand (Actions ▸
+testflight ▸ Run workflow).
 
 ## Known gaps
 
