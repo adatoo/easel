@@ -16,13 +16,13 @@ Apple apps (Silicon Wallet, DocuFile) already upload every release from CI.
 - **Every release goes to TestFlight.**
   - `tag.yml` tags each merge to `main` `vX.Y.Z` from `VERSION`, through the `adatoo-automation`
     App, so the tag can start other workflows.
-  - The tag starts `.github/workflows/testflight.yml` on the Mac mini (`MAC_RUNNER`), which runs
-    `task release`, then `task testflight:notes` to set What to Test from `CHANGELOG.md`.
+  - The tag starts `.github/workflows/testflight.yml` on GitHub's hosted macOS (ADR-0005), which
+    runs `task release`, then `task testflight:notes` to set What to Test from `CHANGELOG.md`.
   - It isn't part of the `CI Gate`, so a failed upload never blocks a merge. It can be re-run by
     hand (`workflow_dispatch`).
 - **Signing, as in Silicon Wallet:** automatic, with `-allowProvisioningUpdates` and an App Store
   Connect API key with the **Admin** role.
-  - Archiving on the runner makes an "Apple Development: Created via API" certificate. The job
+  - Archiving on a fresh runner makes an "Apple Development: Created via API" certificate. The job
     revokes every such certificate when it ends, pass or fail (`task release:prune-certificates`),
     so they never reach Apple's limit. Certificates made in Xcode or on the website are untouched.
   - The export (`Config/ExportOptions.plist`, `app-store-connect`, `upload`) re-signs with Apple's
@@ -42,9 +42,9 @@ Apple apps (Silicon Wallet, DocuFile) already upload every release from CI.
 ## Consequences
 
 - Each merge reaches her iPad through the TestFlight app, with no Xcode or cable.
-- Uploads depend on the Mac mini; the hosted fallback runner may lack the Xcode the project needs.
+- Uploads don't depend on the Mac mini. The Mac mini's `ghrunner` runner couldn't sign (#3).
 - Pruning is team-wide: a Silicon Wallet and an Easel upload running at the same moment could
   revoke each other's certificate mid-run. Re-run the one that failed.
 - TestFlight builds expire after 90 days; if nothing merges for that long, re-run the workflow.
 - **Owner's one-time set-up** (not automated): the App Store Connect app record, the API key and
-  its secrets, the Mac mini runners for this repo, and testers accepting their invitations.
+  its secrets, and testers accepting their invitations.

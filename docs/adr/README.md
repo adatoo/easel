@@ -19,3 +19,5 @@ that has already been made does not.
 | [0001](./0001-xcodegen-and-version.md) | XcodeGen project, with `VERSION` as the version source | Accepted |
 | [0002](./0002-site-through-hidden-web-views.md) | Use the site through hidden web views, playing only its own streams | Accepted |
 | [0003](./0003-testflight-from-ci.md) | TestFlight builds from CI | Accepted |
+| [0004](./0004-mit-licence.md) | Open source under the MIT licence | Accepted |
+| [0005](./0005-public-repo-ci.md) | GitHub-hosted runners only; shared workflows are vendored | Accepted |

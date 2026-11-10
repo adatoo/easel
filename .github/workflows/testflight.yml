@@ -3,9 +3,10 @@ name: testflight
 # Uploads each release to TestFlight (ADR-0003). tag.yml tags every merge
 # through the adatoo-automation App, so the tag starts this workflow. It isn't
 # part of the CI Gate, so a failed upload never blocks a merge; re-run it by
-# hand (workflow_dispatch) once the cause is fixed. It needs the Mac mini and
-# the Actions secrets ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 (the .p8 file's
-# contents). Signing is automatic through the API key, as in Silicon Wallet.
+# hand (workflow_dispatch) once the cause is fixed. It runs on GitHub's hosted
+# macOS (ADR-0005), and needs the Actions secrets ASC_KEY_ID, ASC_ISSUER_ID and
+# ASC_KEY_P8 (the .p8 file's contents). Signing is automatic through the API
+# key, as in Silicon Wallet.
 
 on:
   push:
@@ -22,7 +23,7 @@ concurrency:
 jobs:
   upload:
     name: upload
-    runs-on: ${{ vars.MAC_RUNNER || 'macos-14' }}
+    runs-on: ${{ vars.MAC_RUNNER || 'macos-26' }}
     timeout-minutes: 60
     env:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}

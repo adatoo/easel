@@ -5,6 +5,13 @@ All notable changes to Easel are documented here. The format is based on
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). TestFlight's What to Test for each
 version comes from its section (`task testflight:notes`).
 
+## [0.1.2] - 2026-11-10
+
+### Changed
+
+- Easel is now open source, under the MIT licence.
+- New versions are built and sent to TestFlight by GitHub, so updates arrive after every change.
+
 ## [0.1.1] - 2026-11-10
 
 ### Changed
